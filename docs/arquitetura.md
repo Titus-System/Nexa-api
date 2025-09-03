@@ -377,7 +377,7 @@ Gerar logs estruturados e métricas de monitoramento.
 
 -----
 
-## Estrutura de diretórios
+## Estrutura inicial proposta de diretórios
 ```
 .
 ├── app/
@@ -387,6 +387,9 @@ Gerar logs estruturados e métricas de monitoramento.
 │   ├── celery_utils.py         # Configuração do Celery
 │   ├── models.py               # Modelos de dados do SQLAlchemy
 │   │
+│   ├── api/
+│   │   ├── __init__.py         # Definição da api com flask_restful
+|   |
 │   ├── auth/
 │   │   ├── __init__.py
 │   │   ├── routes.py           # Endpoints: /login, /register
