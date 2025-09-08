@@ -1,25 +1,29 @@
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
+# Cria diretório da aplicação
 WORKDIR /app
 
-# Instala dependências do sistema (se precisar psycopg2, Pillow, etc.)
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     build-essential libpq-dev && \
-#     rm -rf /var/lib/apt/lists/*
-
+# Copia requirements
 COPY requirements.txt .
+
+# Instala dependências
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Copia aplicação
 COPY . .
 
+# Cria pasta de logs
+RUN mkdir -p /app/logs && chmod -R 777 /app/logs
+
+# Cria usuário appuser
 RUN useradd -m appuser
+
+# Usa appuser
 USER appuser
 
+# Exposição da porta
 EXPOSE 5000
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
-
+# Comando padrão com Gunicorn + eventlet
+CMD ["gunicorn", "-k", "eventlet", "-w", "1", "run:app", "--bind", "0.0.0.0:5000"]

@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     APP_NAME: str = 'Nexa'
     ENVIRONMENT: str = 'development'
 
+    CELERY_BROKER_URL: str = ""
+
     @property
     def IS_PRODUCTION(self) -> bool:
         return self.ENVIRONMENT == 'production'

@@ -437,6 +437,7 @@ Gerar logs estruturados e métricas de monitoramento.
   * Encontrar a definição e detalhes do produto.
   * Criar agente de busca na web
   * Enviar o resultado json via WebSocket para o frontend.
+  * Construir e validar o pipeline de processamento assíncrono de ponta a ponta para um único partnumber.
 
 ### Segunda Entrega
   * Extrair partnumbers de arquivo PDF.

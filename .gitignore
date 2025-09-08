@@ -43,3 +43,6 @@ instance/
 
 # VSCode dev containers
 .devcontainer/
+
+
+logs/

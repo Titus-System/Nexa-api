@@ -8,3 +8,10 @@ services:
       - "5000:5000"
     volumes:
       - .:/app
+      - ./logs:/app/logs
+    restart: always
+    environment:
+      - ENV=production
+    command: gunicorn -k eventlet -w 1 run:app --bind 0.0.0.0:5000
+
+
