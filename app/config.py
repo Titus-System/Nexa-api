@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -11,10 +12,10 @@ class Settings(BaseSettings):
     def IS_PRODUCTION(self) -> bool:
         return self.ENVIRONMENT == 'production'
 
-    class Config:
-        env_file = ".env"
-        # Para compatibilidade com Pydantic V1, caso necessário no futuro
-        env_file_encoding = 'utf-8'
+    model_config = ConfigDict(
+        env_file = ".env",
+        env_file_encoding = "utf-8"
+    )
 
 
 settings = Settings()

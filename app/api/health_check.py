@@ -3,7 +3,8 @@ import time
 from flask import Response, json, request
 from flask_restful import Resource
 from app.config import settings
-from app.events import mock_task
+from app.events import test_task
+from app.extensions import socketio
 
 
 class HealthCheck(Resource):
@@ -25,15 +26,17 @@ class CheckWebSocketConnection(Resource):
         body = request.get_json()
         print("body request json: ", body)
 
-        sid = body.get('sid')
+        sid = body.get('socket_session_id')
         if not sid:
             return {
                 "error": "BadRequest - sid não informado no corpo da requisição"
             }, 400
-        from app.extensions import socketio
-        socketio.start_background_task(mock_task, sid)
+
+        ## TODO: implementar check se existe conexão ativa com sid fornecido
+        
+        socketio.start_background_task(test_task, sid)
         
         return { 
-            "message": "Seu pedido foi aceito...", 
-            # "task_id": task
+            "message": "Conexão websocket ativa e saudável.",
+            "socket_session_id": sid
         }, 202
