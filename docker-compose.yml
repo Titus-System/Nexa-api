@@ -12,6 +12,16 @@ services:
     restart: always
     environment:
       - ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    depends_on:
+      - redis
     command: gunicorn -k eventlet -w 1 run:app --bind 0.0.0.0:5000
 
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: always
 

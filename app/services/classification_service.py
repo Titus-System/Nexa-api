@@ -1,22 +1,17 @@
-import uuid
-from app.api.classification_resource import ClassificationServiceProtocol
-from app.extensions import socketio as sio
+from celery.result import AsyncResult
+from app.services.protocols import IClassificationService
 from app.schemas.classification_schemas import StartClassificationSchema
-from app.tasks.classification_task import ClassificationTask
+from app.services.protocols import IAsyncTaskClient
 
 
-class ClassificationService(ClassificationServiceProtocol):
-    @staticmethod
-    def start_classification(schema:StartClassificationSchema) -> str:
-        
-        task_id = str(uuid.uuid4())
+class ClassificationService(IClassificationService):
+    def __init__(self, task_client:IAsyncTaskClient):
+        self.task_client = task_client
 
-        sio.start_background_task(
-            ClassificationTask.run,
-            schema.partnumber,
-            schema.socket_session_id,
-            task_id
-        )
+    def start_classification(self, schema:StartClassificationSchema) -> str:
+        task_data = {"partnumber": schema.partnumber}
+
+        task_id = self.task_client.run_task(task_data)
 
         return task_id
     

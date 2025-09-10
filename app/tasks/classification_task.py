@@ -1,24 +1,25 @@
 import time
-from app.events.classification_events import finished, update_status
-from app.extensions import socketio as sio
+from celery.result import AsyncResult
+from app.events.classification_events import finished
+from app.extensions import celery
+from app.services.protocols import IAsyncTaskClient
 
 
-class ClassificationTask:
-    @staticmethod
-    def run(partnumber, socket_session_id, task_id):
-        for i in range(5):
-            time.sleep(2)
-            print("classification_progress: ", i)
+class CeleryTaskClient(IAsyncTaskClient):
+    def run_task(self, task_data):
+        task: AsyncResult = classification_task.delay(**task_data)
+        return task.id
 
-            update_status({
-                "step": i + 1,
-                "total": 5
-            }, sid=socket_session_id)
 
-        result = {
-            "partnumber": partnumber,
-            "classification": "1234.56.78",
-            "status": "done",
-            "task_id": task_id
-        }
-        finished(result, sid = socket_session_id)
+@celery.task(bind=True)
+def classification_task(self, partnumber):
+    for i in range(5):
+        time.sleep(2)
+        print("classification_progress: ", i)
+
+    result = {
+        "partnumber": partnumber,
+        "classification": "1234.56.78",
+        "status": "done"
+    }
+    finished(result)

@@ -1,7 +1,16 @@
-from typing import Protocol
+from typing import Any, Dict, Protocol
 
 
-class ClassificationServiceProtocol(Protocol):
-    @staticmethod
-    def start_classification(schema):
+class IClassificationService(Protocol):
+    def start_classification(self, schema):
         ...
+
+
+class IAsyncTaskClient(Protocol):
+    def run_task(self, task_data: Dict[str, Any]) -> str:
+        """
+        Inicia Tarefa assíncrona e retorna o id da task
+        """
+        ...
+
+
