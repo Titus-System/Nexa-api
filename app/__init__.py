@@ -18,7 +18,7 @@ def create_app(container: Container | None = None) -> Flask:
 
     api = initialize_api(app)
 
-    socketio.init_app(app)
+    socketio.init_app(app, message_queue=settings.REDIS_URL)
     celery = init_celery(app)
         
     return app

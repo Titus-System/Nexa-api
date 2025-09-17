@@ -11,7 +11,7 @@ class ClassificationService(IClassificationService):
     def start_classification(self, schema:StartClassificationSchema) -> str:
         task_data = {"partnumber": schema.partnumber}
 
-        task_id = self.task_client.run_task(task_data)
+        task_id = self.task_client.run_task(schema.model_dump(exclude_none=True))
 
         return task_id
     

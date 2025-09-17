@@ -32,7 +32,6 @@ payload = {
     "partnumber": "1234",
     "description": "descr",
     "manufacturer": "manuf",
-    "socket_session_id": "abcd"
 }
 
 
