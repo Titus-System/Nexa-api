@@ -3,7 +3,7 @@ import os
 import json
 from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
 from queue import Queue
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from colorama import Fore, Style, init
@@ -24,7 +24,7 @@ except ImportError:
 class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_record = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "message": record.getMessage(),
             "level": record.levelname,
             "logger": record.name,

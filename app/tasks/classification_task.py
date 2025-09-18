@@ -1,9 +1,10 @@
+import json
 import time
 from celery.result import AsyncResult
 from app.events.events_enum import EventName
 from app.extensions import celery
 from app.services.protocols import IAsyncTaskClient
-from . import external_socketio, celery_logger
+from . import external_socketio, celery_logger, redis_client
 
 
 class CeleryTaskClient(IAsyncTaskClient):
@@ -33,11 +34,12 @@ def classification_task(self, kwargs):
         "status": "done"
     }
 
-    external_socketio.emit(
-        EventName.CLASSIFICATION_FINISHED.value,
-        result, 
-        to=kwargs.get("room_id")
-    )
+    payload = {
+        'room_id': kwargs.get("room_id"),
+        'result': result
+    }
+
+    redis_client.publish('task_results', json.dumps(payload))
 
     celery_logger.info(f"Task {self.request.id} completed for partnumber {kwargs.get('partnumber')}")
     return result

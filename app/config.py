@@ -23,5 +23,7 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
     )
 
+    NEXA_AI_SERVER: str = 'http://localhost:5001'
+
 
 settings = Settings()
