@@ -5,7 +5,10 @@ import redis
 from app.config import settings
 from app.core.logger_config import logger
 
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(
+    cors_allowed_origins="*",
+    redis_url=settings.REDIS_URL,
+)
 
 celery = Celery(
     "myapp",
@@ -52,6 +55,7 @@ def redis_listener():
                     result,
                     to=room_id
                 )
+                socketio.close_room(room_id)
         except Exception as e:
             logger.error(f"ERRO no ouvinte Redis: {e}")
 

@@ -6,11 +6,11 @@ import uuid
 
 from app.containers import Container
 from app.core.logger_config import logger
-from app.schemas.classification_schemas import ClassificationRequest, StartClassificationSchema
+from app.schemas.classification_schemas import SingleClassificationRequest, StartSingleClassificationSchema
 from app.services.protocols import IClassificationService
 
 
-class ClassificationResource(Resource):
+class PartnumberClassification(Resource):
     @inject
     def __init__(
         self, 
@@ -22,15 +22,15 @@ class ClassificationResource(Resource):
 
     def post(self):
         try:
-            body = ClassificationRequest(**request.get_json())
+            body = SingleClassificationRequest(**request.get_json())
         except ValidationError as e:
             return {"errors": e.errors()}, 400
         
         room_id = str(uuid.uuid4())
         
-        body = body.model_dump()
+        body = body.model_dump(exclude_none=True)
         body["room_id"] = room_id
-        task_id = self.service.start_classification(schema= StartClassificationSchema(**body))
+        task_id = self.service.start_single_classification(schema= StartSingleClassificationSchema(**body))
         
         print("Pedido de classificação foi recebido")
         return { 

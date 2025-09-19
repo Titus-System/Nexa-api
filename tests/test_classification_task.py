@@ -21,6 +21,7 @@ PARTNUMBER_PARA_TESTAR = "PN-FINAL-TEST-789"
 CELERY_TIMEOUT = 20
 
 classification_finished_event = threading.Event()
+calssification_error_event = threading.Event()
 
 event_data = {}
 
@@ -38,6 +39,11 @@ def disconnect():
 
 @sio.on("classification_update_status")
 def on_classification_progress(data):
+    if data.get('error'):
+        print(f"\n❌ Erro na classificação: {data['error']}")
+        disconnect()
+        calssification_error_event.set()
+
     print(f"\n🔄 Progresso da classificação: {data}")
 
 
@@ -64,8 +70,8 @@ def test_full_classification_flow_with_room_architecture():
 
 
         payload = {"partnumber": PARTNUMBER_PARA_TESTAR}
-        print(f"▶️ Enviando requisição POST para {BASE_URL}/classify com payload: {payload}")
-        response = requests.post(f"{BASE_URL}/classify", json=payload)
+        print(f"▶️ Enviando requisição POST para {BASE_URL}/classify-partnumber com payload: {payload}")
+        response = requests.post(f"{BASE_URL}/classify-partnumber", json=payload)
 
         assert response.status_code == 202, f"Esperava status 202, mas recebeu {response.status_code}. Resposta: {response.text}"
         post_data = response.json()
@@ -77,14 +83,19 @@ def test_full_classification_flow_with_room_architecture():
         sio.emit('join', {'room_id': room_id})
         time.sleep(1)
 
-        print(f"⏳ Aguardando a notificação do Celery por até {CELERY_TIMEOUT} segundos...")
-        event_received = classification_finished_event.wait(timeout=CELERY_TIMEOUT)
+        error_received = calssification_error_event.wait(timeout=1)
 
-        assert event_received, f"❌ ERRO: Timeout! O evento 'classification_finished' não foi recebido após {CELERY_TIMEOUT} segundos."
+        if not error_received:
+            print(f"⏳ Aguardando a notificação do Celery por até {CELERY_TIMEOUT} segundos...")
+            event_received = classification_finished_event.wait(timeout=CELERY_TIMEOUT)
 
-        assert event_data.get('partnumber') == PARTNUMBER_PARA_TESTAR
-        assert event_data.get('status') == 'done'
-        print("✅ Dados recebidos no evento estão corretos!")
+            assert event_received, f"❌ ERRO: Timeout! O evento 'classification_finished' não foi recebido após {CELERY_TIMEOUT} segundos."
+
+            assert event_data.get('partnumber') == PARTNUMBER_PARA_TESTAR
+            assert event_data.get('status') == 'done'
+            print("✅ Dados recebidos no evento estão corretos!")
+        else:
+            assert False, "❌ ERRO: Recebido erro de classificação via Socket.IO."
 
     finally:
         if sio.connected:

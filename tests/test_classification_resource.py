@@ -11,7 +11,7 @@ from app.containers import Container
 
 
 class FakeService:
-    def start_classification(self, schema):
+    def start_single_classification(self, schema):
         return "fake-task-id"
 
 
@@ -37,7 +37,7 @@ payload = {
 
 def test_classification_resource_success(client):
     response = client.post(
-        "/classify",
+        "/classify-partnumber",
         data=json.dumps(payload),
         content_type="application/json"
     )
@@ -50,7 +50,7 @@ def test_classification_resource_success(client):
 
 def test_classification_resource_invalid_payload(client):
     response = client.post(
-        "/classify",
+        "/classify-partnumber",
         data=json.dumps({}),
         content_type="application/json"
     )

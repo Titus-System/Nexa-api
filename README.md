@@ -28,7 +28,14 @@ venv\Scripts\activate      # Windows
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
+
+chmod -R 777 /logs
+
 ```
+
+
+
+
 
 ### Passo 3: Rodar o backend
 

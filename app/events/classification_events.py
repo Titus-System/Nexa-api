@@ -2,7 +2,7 @@ from app.events.events_enum import EventName
 from app.extensions import socketio as sio
 
 
-def finished(dto, sid):
+def classification_finished_event(dto, sid):
     sio.emit(
         EventName.CLASSIFICATION_FINISHED.value, 
         dto, 
