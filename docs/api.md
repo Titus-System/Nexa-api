@@ -1,114 +1,141 @@
-## **Documentação da API WebSocket – Classificação de Partnumber**
+## API Nexa – Comunicação Frontend ↔️ Nexa-api
+---
 
-**Versão:** 1.0
-**Última Atualização:** 18 de Setembro de 2025
+## 1. Visão Geral
 
-### 1\. Visão Geral
+Esta API permite que clientes solicitem a classificação de partnumbers de forma assíncrona, utilizando:
+- **HTTP REST** para iniciar a tarefa
+- **WebSocket (Socket.IO)** para receber progresso e resultado final
 
-Esta API fornece um mecanismo para solicitar a classificação de *partnumbers* de forma assíncrona. Para evitar longos tempos de espera em requisições HTTP, o sistema utiliza uma combinação de uma chamada REST para iniciar a tarefa e uma conexão WebSocket para comunicar o progresso e o resultado final em tempo real.
+---
 
-O backend é construído com **Flask** e **Flask-SocketIO**, o que significa que os clientes **devem** usar uma biblioteca compatível com o protocolo **Socket.IO** (por exemplo, `socket.io-client` para JavaScript/TypeScript, `python-socketio` para Python) para garantir a compatibilidade.
+## 2. HTTP REST
 
-### 2\. Fluxo de Operação Essencial
+### 2.1. Iniciar Classificação
 
-O processo de classificação segue 4 passos principais:
+- **Endpoint:** `/classify-partnumber`
+- **Método:** `POST`
+- **Content-Type:** `application/json`
 
-1.  **Conexão WebSocket:** O cliente primeiro estabelece uma conexão persistente com o nosso servidor Socket.IO.
-2.  **Requisição HTTP:** O cliente envia uma requisição `POST` para o endpoint REST `/classify-partnumber` contendo o *partnumber* a ser classificado.
-3.  **Inscrição na Sala:** A API REST responde imediatamente (`202 Accepted`) com um `room_id` único para esta tarefa. O cliente deve, então, usar sua conexão WebSocket para se inscrever nesta sala.
-4.  **Recebimento de Atualizações:** O servidor emitirá todos os eventos de progresso e o resultado final da classificação para a sala (`room_id`) específica. O cliente apenas precisa escutar os eventos.
-
-### 3\. Endpoint de Conexão WebSocket
-
-Em ambiente de desenvolvimento, utilize o seguinte endpoint para estabelecer a conexão Socket.IO:
-`ws://localhost:5000`
-
-Após a conexão, o servidor emitirá um evento `connected` contendo o ID da sua sessão.
-
-### 4\. API REST – Início da Classificação
-
-Para iniciar uma nova tarefa de classificação, faça uma requisição HTTP.
-
-  * **Endpoint:** `/classify-partnumber`
-  * **Método:** `POST`
-  * **Content-Type:** `application/json`
-
-#### Corpo da Requisição (Request Body)
+#### Corpo da Requisição
 
 ```json
 {
   "partnumber": "PN-TEST-12345",
-  "description": "[opcional] Descrição ou detalhes adicionais do produto",
-  "manufacturer": "[opcional] Fabricante do produto",
-  "supplier": "[opcional] Fornecedor do produto"
+  "description": "[opcional] Descrição do produto",
+  "manufacturer": "[opcional] Fabricante",
+  "supplier": "[opcional] Fornecedor"
 }
 ```
 
-  * `partnumber` (string, obrigatório): O partnumber a ser classificado.
-  * `description` (string, opcional): Uma descrição para auxiliar na classificação.
-  * `manufacturer` (string, opcional): Nome do fabricante do produto
-  * `supplier` (string, opcional): Nome do fornecedor do produto em questão
+Campos:
+- `partnumber` (**obrigatório**): string
+- `description`, `manufacturer`, `supplier`: string (opcionais)
 
 #### Resposta de Sucesso (`202 Accepted`)
 
 ```json
 {
   "message": "Seu pedido de classificação foi aceito...",
-  "task_id": "a1b2c3d4-e5f6-7890-1234-567890aalkdsh",
-  "room_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+  "task_id": "<uuid-da-tarefa>",
+  "room_id": "<uuid-da-sala>"
 }
 ```
 
-  * `room_id` (string): O ID da sala que você deve usar para escutar as atualizações.
+---
 
-### 5\. API de Eventos WebSocket
+## 3. WebSocket (Socket.IO)
 
-#### 5.1. Eventos Emitidos pelo Cliente (Cliente -\> Servidor)
+### 3.1. Conexão
 
-| Evento       | Payload (JSON)            | Descrição                                                                                                                                     |
-| :----------- | :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`join`**   | `{ "room_id": "string" }` | **(Obrigatório)**. Após receber o `room_id` da API REST, o cliente **deve** emitir este evento para começar a receber atualizações da tarefa. |
-| `ping_event` | (qualquer)                | Evento de teste para verificar a conexão. O servidor responderá com um `pong_event`.                                                          |
-| `message`    | `string`                  | Evento padrão do Socket.IO para enviar uma mensagem de texto simples. O servidor responderá com um "Echo".                                    |
+- **URL:** `ws://localhost:5000`
+- Após conectar, o servidor emite:
+  ```json
+  { "socket_session_id": "<id-da-sessao>" }
+  ```
 
-#### 5.2. Eventos Emitidos pelo Servidor (Servidor -\> Cliente)
+### 3.2. Eventos do Cliente para o Servidor
 
-| Evento                         | Payload (JSON)                      | Descrição                                                                                                                         |
-| :----------------------------- | :---------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
-| `connected`                    | `{ "socket_session_id": "string" }` | Emitido imediatamente após uma conexão bem-sucedida. O cliente deve armazenar o `socket_session_id` para usar na requisição POST. |
-| `pong_event`                   | `{ "message": "pong" }`             | Resposta ao evento `ping_event` do cliente.                                                                                       |
-| `classification_update_status` | `objeto`                            | Emitido periodicamente durante o processamento para informar o progresso. A estrutura exata do objeto pode variar.                |
-| `classification_finished`      | `objeto`                            | Emitido uma única vez quando a tarefa é concluída, contendo o resultado final da classificação.                                   |
+| Evento       | Payload (JSON)            | Descrição                                                                 |
+|--------------|--------------------------|--------------------------------------------------------------------------|
+| `join`       | `{ "room_id": "..." }`   | Entra na sala para receber updates da tarefa (obrigatório após o POST)   |
+| `ping_event` | qualquer                 | Testa a conexão. O servidor responde com `pong_event`.                   |
+| `message`    | string                   | Mensagem de texto simples (ecoada pelo servidor).                        |
 
-#### Estrutura de Payload (Exemplos)
+### 3.3. Eventos do Servidor para o Cliente
 
-**Exemplo de Payload para `classification_update_status`:**
+| Evento                         | Payload (JSON)                      | Descrição                                                        |
+|---------------------------------|-------------------------------------|-------------------------------------------------------------------|
+| `connected`                    | `{ "socket_session_id": "..." }`   | Emissão automática ao conectar.                                   |
+| `pong_event`                   | `{ "message": "pong" }`            | Resposta ao `ping_event`.                                        |
+| `classification_update_status` | ver abaixo                          | Progresso da tarefa.                                             |
+| `classification_finished`      | ver abaixo                          | Resultado final da classificação.                                 |
+
+#### `classification_update_status` - Exemplo de Payload – Progresso
 
 ```json
 {
-  "current":"2",
-  "total":"5",
   "status": "processing",
-  "message": "Analisando dados...",
+  "current": 2,
+  "total": 5,
+  "message": "Analisando dados..."
 }
 ```
 
-**Exemplo de Payload para `classification_finished`:**
+#### `classification_update_status` - Exemplo de Payload - Falha
 
 ```json
 {
-    "partnumber": "PN-TEST-12345",
-    "description": "Descrição detalhada do produto a partir do partnumber",
-    "status": "done"
+    "status": "failed",
+    "message": "Erro ao iniciar o processamento do partnumber.",
 }
 ```
 
-*(Nota: a estrutura dos payloads de `update` e `finished` são exemplos e devem ser confirmados com a implementação exata do DTO do backend).*
+#### `classification_finished` - Exemplo de Payload – Resultado Final
 
-**possíveis `status`:** 
-- `processing`: indica que o processamento do pedido está correndo corretamente e deve ser finalizada em breve
-- `done`: indica a finalização do processamento e a comunicação da resposta final da aplicação
-- `failed`: indica que o processamento falhou e foi interrompido devido a algum erro interno da aplicação
+```json
+{
+  "status": "done",
+  "message": "Processamento concluído com sucesso.",
+  "partnumber": "PN-TEST-12345",
+  "result": {
+    "ncm": "123456788",
+    "description": "Descrição detalhada do produto",
+    "exception": "01",
+    "nve": "01",
+    "fabricante": "fábrica Nexa",
+    "endereco": "av pequim",
+    "pais": "China",
+    "confidence_score": 0.98
+  }
+}
+```
+
+**Status possíveis:**
+- `processing`: tarefa em andamento
+- `done`: tarefa concluída com sucesso
+- `failed`: erro durante o processamento
+
+---
+
+## 4. Fluxo Resumido
+
+1. Cliente conecta via WebSocket e recebe seu `socket_session_id`.
+2. Cliente faz POST para `/classify-partnumber`.
+3. Recebe `room_id` e `task_id`.
+4. Cliente emite `join` com o `room_id`.
+5. Recebe eventos de progresso (`classification_update_status`).
+6. Recebe evento final (`classification_finished`).
+
+---
+
+## 5. Observações
+
+- Use sempre bibliotecas compatíveis com Socket.IO.
+- O campo `room_id` é obrigatório para receber updates.
+- O payload dos eventos segue os modelos Pydantic em `app/schemas/classification_schemas.py`.
+- Para exemplos de uso, veja os testes em `tests/test_classification_task.py`.
+
 
 ### 6\. Exemplo de Implementação Completa (Pseudocódigo / TypeScript)
 
