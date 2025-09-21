@@ -68,7 +68,6 @@ def test_full_classification_flow_with_room_architecture():
         sio.connect(BASE_URL, transports=['websocket'])
         assert sio.connected
 
-
         payload = {"partnumber": PARTNUMBER_PARA_TESTAR}
         print(f"▶️ Enviando requisição POST para {BASE_URL}/classify-partnumber com payload: {payload}")
         response = requests.post(f"{BASE_URL}/classify-partnumber", json=payload)
@@ -90,9 +89,15 @@ def test_full_classification_flow_with_room_architecture():
             event_received = classification_finished_event.wait(timeout=CELERY_TIMEOUT)
 
             assert event_received, f"❌ ERRO: Timeout! O evento 'classification_finished' não foi recebido após {CELERY_TIMEOUT} segundos."
-
-            assert event_data.get('partnumber') == PARTNUMBER_PARA_TESTAR
+            print(f"\nevent_data recebido: \n{event_data}\n")
             assert event_data.get('status') == 'done'
+            assert event_data.get('message') is not None
+            assert event_data.get('partnumber') == PARTNUMBER_PARA_TESTAR
+            result = event_data.get('result')
+            assert result is not None
+            result_keys = result.keys()
+            assert len(result_keys) == 8
+            
             print("✅ Dados recebidos no evento estão corretos!")
         else:
             assert False, "❌ ERRO: Recebido erro de classificação via Socket.IO."

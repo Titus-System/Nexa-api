@@ -1,7 +1,13 @@
+import json
 import time
 from flask import request
 from flask_socketio import disconnect, emit, join_room, send
+import redis
+from app.events.classification_events import single_classification_finished_event
 from app.extensions import socketio as sio
+from app.schemas.classification_schemas import SingleClassificationResponse, validate_and_get_model
+from app.core.logger_config import logger
+from app.config import settings
 
 
 def test_task(socket_session_id: str):
@@ -61,3 +67,30 @@ def handle_join(data):
     if room:
         join_room(room)
         print(f"Cliente {request.sid} entrou na sala: {room}")
+
+
+def redis_listener():
+    print("📢 Ouvinte Redis iniciado, esperando por resultados de tarefas...")
+    r = redis.from_url(settings.REDIS_URL)
+    pubsub = r.pubsub(ignore_subscribe_messages=True)
+    pubsub.subscribe('task_results')
+
+    for message in pubsub.listen():
+        logger.info(f"mensagem ouvida do canal redis: {message}")
+        try:
+            channel = message['channel'].decode('utf-8')
+            data = json.loads(message['data'])
+
+            if channel == 'task_results':
+                room_id = data.pop('room_id')
+
+                logger.info(f"[INTERCEPTADO]: Resultado para a sala {room_id}. Resultado: {data.get('result')}")
+
+                payload = validate_and_get_model(data, SingleClassificationResponse)
+                single_classification_finished_event(payload, room_id)
+
+                sio.close_room(room_id)
+        except Exception as e:
+            logger.error(f"ERRO no ouvinte Redis: {e}")
+
+

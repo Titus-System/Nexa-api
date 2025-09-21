@@ -1,11 +1,8 @@
 import eventlet
 eventlet.monkey_patch()
-import json
-import redis
 from app import create_app
-from app.extensions import redis_listener, socketio  
-import app.events
-from app.config import settings
+from app.extensions import socketio  
+from app.events import *
 
 app = create_app()
 
