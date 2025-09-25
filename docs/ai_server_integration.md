@@ -57,6 +57,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
   ```json
   {
     "status": "processing",
+    "job_id": "abc-123-xyz",
     "progress": {
       "current": 2,
       "total": 5,
@@ -71,6 +72,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
     ```json
     {
     "status": "failed",
+    "job_id": "abc-123-xyz",
     "error": "Descrição do erro"
     }
     ```
@@ -80,6 +82,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
   ```json
   {
     "status": "done",
+    "job_id": "abc-123-xyz",
     "result": {
       "ncm": "12345678",
       "description": "Descrição detalhada",

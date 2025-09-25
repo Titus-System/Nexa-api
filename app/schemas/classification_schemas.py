@@ -18,6 +18,7 @@ class StartSingleClassificationSchema(SingleClassificationRequest):
 
 
 class SingleClassification(BaseModel):
+    partnumber : Optional[str] = None
     ncm : Optional[str] = None
     description : Optional[str] = None
     exception : Optional[str] = None

@@ -1,5 +1,6 @@
 import json
 import uuid
+from celery import Task
 import requests
 from celery.result import AsyncResult
 from app.events.events_enum import EventName
@@ -18,7 +19,8 @@ class CeleryTaskClientAI(IAsyncTaskClient):
 
 
 @celery.task(bind=True)
-def ai_classification_task(self, task_data: dict):
+def ai_classification_task(self: Task, task_data: dict):
+    task_id = self.request.id
     progress_channel = f"progress-{uuid.uuid4()}"
     
     pubsub = redis_client.pubsub(ignore_subscribe_messages=True)
