@@ -377,7 +377,7 @@ Gerar logs estruturados e métricas de monitoramento.
 
 -----
 
-## Estrutura de diretórios
+## Estrutura inicial proposta de diretórios
 ```
 .
 ├── app/
@@ -387,6 +387,9 @@ Gerar logs estruturados e métricas de monitoramento.
 │   ├── celery_utils.py         # Configuração do Celery
 │   ├── models.py               # Modelos de dados do SQLAlchemy
 │   │
+│   ├── api/
+│   │   ├── __init__.py         # Definição da api com flask_restful
+|   |
 │   ├── auth/
 │   │   ├── __init__.py
 │   │   ├── routes.py           # Endpoints: /login, /register
@@ -434,6 +437,7 @@ Gerar logs estruturados e métricas de monitoramento.
   * Encontrar a definição e detalhes do produto.
   * Criar agente de busca na web
   * Enviar o resultado json via WebSocket para o frontend.
+  * Construir e validar o pipeline de processamento assíncrono de ponta a ponta para um único partnumber.
 
 ### Segunda Entrega
   * Extrair partnumbers de arquivo PDF.
