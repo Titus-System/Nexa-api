@@ -96,7 +96,7 @@ def test_full_classification_flow_with_room_architecture():
             result = event_data.get('result')
             assert result is not None
             result_keys = result.keys()
-            assert len(result_keys) == 8
+            assert len(result_keys) == 9
             
             print("✅ Dados recebidos no evento estão corretos!")
         else:
