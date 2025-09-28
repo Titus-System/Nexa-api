@@ -42,6 +42,11 @@ class UpdateStatusResponse(BaseModel):
     total: Optional[int]
     message: Optional[str]
 
+class FailedStatusResponse(BaseModel):
+    status: str
+    job_id: Optional[str] = None
+    message: Optional[str] = None
+
 
 def validate_and_get_model(data_to_validate: Dict[str, any], model:Type[T]) -> Optional[T]:
     """

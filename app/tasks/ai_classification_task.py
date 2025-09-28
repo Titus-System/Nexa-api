@@ -6,7 +6,7 @@ from celery.result import AsyncResult
 from app.events.events_enum import EventName
 from app.extensions import celery
 from app.schemas.ai_schemas import AISingleClassificationRequest
-from app.schemas.classification_schemas import StartSingleClassificationSchema, UpdateStatusResponse, validate_and_get_model
+from app.schemas.classification_schemas import FailedStatusResponse, StartSingleClassificationSchema, UpdateStatusResponse, validate_and_get_model
 from app.services.protocols import IAsyncTaskClient
 from . import external_socketio, celery_logger, redis_client
 from app.config import settings
@@ -103,7 +103,7 @@ def _listen_for_progress(pubsub, room_id: str) -> dict | None:
                     'status': 'failed',
                     'message': data.get('error', 'O processamento falhou sem mensagem de erro.')
                 }
-                fail_payload = validate_and_get_model(fail_payload, UpdateStatusResponse).model_dump(exclude_none=True)
+                fail_payload = validate_and_get_model(fail_payload, FailedStatusResponse).model_dump(exclude_none=True)
 
                 external_socketio.emit(
                     EventName.CLASSIFICATION_UPDATE_STATUS.value,
