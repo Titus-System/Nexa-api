@@ -10,13 +10,9 @@ services:
       - .:/app
       - ./logs:/app/logs
     restart: always
-    environment:
-      - ENV=development
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
     depends_on:
       - redis
+      - db
     command: gunicorn --reload -k eventlet -w 1 run:app --bind 0.0.0.0:5000
 
   redis:
@@ -24,10 +20,19 @@ services:
     ports:
       - "6379:6379"
     restart: always
+
+  db:
+    image: postgres:15
+    ports:
+      - "5433:5432"
+    env_file:
+      - .env
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   worker:
     build: .
-    # Comando para iniciar o worker.
-    # OBS: Altere 'run.celery' para o caminho correto do seu objeto celery.
     command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery -A app.extensions.celery worker --loglevel=info
     env_file:
       - .env
@@ -35,10 +40,9 @@ services:
       - .:/app
       - ./logs:/app/logs
     restart: always
-    environment:
-      - ENV=production
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
     depends_on:
       - redis
+      - db
+
+volumes:
+  postgres_data:

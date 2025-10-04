@@ -17,6 +17,21 @@ class Settings(BaseSettings):
     @property
     def REDIS_URL(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "nexa_db"
+
+    NEXA_DB_NAME: str = "nexa_db"
+    NEXA_DB_PORT: str = "5432"
+    NEXA_DB_USER: str = "postgres"
+    NEXA_DB_PASS: str = "postgres"
+    NEXA_DB_HOST: str = "db"
+
+    @property
+    def NEXA_DB_URL(self) -> str:
+        return f"postgresql://{self.NEXA_DB_USER}:{self.NEXA_DB_PASS}@{self.NEXA_DB_HOST}:{self.NEXA_DB_PORT}/{self.NEXA_DB_NAME}"
+
 
     model_config = ConfigDict(
         env_file = ".env",

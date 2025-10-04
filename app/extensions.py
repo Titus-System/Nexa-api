@@ -2,9 +2,13 @@ import json
 from typing import Dict
 from celery import Celery
 from flask_socketio import SocketIO
+from flask_sqlalchemy import SQLAlchemy
 import redis
 from app.config import settings
 from app.core.logger_config import logger
+
+
+db = SQLAlchemy()
 
 socketio = SocketIO(
     cors_allowed_origins="*",
