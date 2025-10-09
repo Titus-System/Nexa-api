@@ -1,31 +1,54 @@
 from decimal import Decimal
 import enum
-from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, Integer, Numeric, Text, String, DateTime, UniqueConstraint, func, Enum
+from sqlalchemy import (Column, ForeignKey, Integer, Numeric, Text, String, 
+                        UniqueConstraint, func, Enum, CheckConstraint,
+                        ForeignKeyConstraint)
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 from app.extensions import db
 
 class TimeStampMixin():
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
+
+class UserRole(str, enum.Enum):
+    ADMIN = "ADMIN"
+    USER = "USER"
+    GUEST = "GUEST"
+
+class ClassificationStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    REPLACED = "REPLACED"
+    REJECTED = "REJECTED"
+
+class TaskStatus(str, enum.Enum):
+    STARTED = "STARTED"
+    PROCESSING = "PROCESSING"
+    FAILED = "FAILED"
+    DONE = "DONE"
 
 
-class UserRole(enum.Enum):
-    ADMIN = "admin"
-    USER = "user"
-    GUEST = "guest"
+role_permissions = db.Table('role_permissions',
+    Column('role_id', Integer, ForeignKey('roles.id'), primary_key=True),
+    Column('permission_id', Integer, ForeignKey('permissions.id'), primary_key=True)
+)
 
 
-class ClassificationStatus(enum.Enum):
-    ACTIVE = "active"
-    REPLACED = "replaced"
-    REJECTED = "rejected"
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), unique=True, nullable=False)
+    
+    users = relationship('User', back_populates='role')
+    permissions = relationship('Permission', secondary=role_permissions, back_populates='roles')
 
 
-class TaskStatus(enum.Enum):
-    STARTED = "started"
-    PROCESSING = "processing"
-    FAILED = "failed"
-    DONE = "done"
+class Permission(db.Model):
+    __tablename__ = 'permissions'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), unique=True, nullable=False)
+    
+    roles = relationship('Role', secondary=role_permissions, back_populates='permissions')
 
 
 class User(db.Model, TimeStampMixin):
@@ -35,20 +58,16 @@ class User(db.Model, TimeStampMixin):
     name = Column(String(120), nullable=False)
     email = Column(String(120), nullable=False, unique=True)
     password_hash = Column(String(128), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.USER)
+    # role = Column(Enum(UserRole, name="user_role"), nullable=False, default=UserRole.USER)
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
     jwt_token_hash = Column(String(256))
 
-    # auto-relacionamento
-    admin_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    admin_id = Column(Integer, ForeignKey("users.id", ondelete='SET NULL'), nullable=True)
 
-    # quem é o admin desse usuário
     admin = relationship("User", remote_side=[id], back_populates="supervised_users")
-
-    # usuários supervisionados por esse admin
-    supervised_users = relationship("User", back_populates="admin", cascade="all, delete-orphan")
-
+    supervised_users = relationship("User", back_populates="admin")
     tasks = relationship("Task", back_populates="user")
-
+    role = relationship('Role', back_populates='users', uselist=False)
 
 
 class Task(db.Model, TimeStampMixin):
@@ -58,11 +77,11 @@ class Task(db.Model, TimeStampMixin):
     job_id = Column(String(256))
     room_id = Column(String(256))
     progress_channel = Column(String(256))
-    status = Column(Enum(TaskStatus), nullable=False, default=TaskStatus.STARTED)
+    status = Column(Enum(TaskStatus, name="task_status"), nullable=False, default=TaskStatus.STARTED)
     current = Column(Integer)
     total = Column(Integer)
     message = Column(String(256))
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete='SET NULL'))
 
     user = relationship("User", back_populates="tasks")
     classifications = relationship("Classification", back_populates="task")
@@ -71,7 +90,7 @@ class Task(db.Model, TimeStampMixin):
 class Manufacturer(db.Model, TimeStampMixin):
     __tablename__ = "manufacturers"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
     address = Column(String(255))
     country = Column(String(100))
@@ -88,30 +107,56 @@ class Partnumber(db.Model, TimeStampMixin):
 
     id = Column(Integer, primary_key=True)
     code = Column(String(255), nullable=False, unique=True)
+    
+    best_classification_id = Column(Integer, unique=True, nullable=True)
 
-    # best_classification_id = Column(Integer, ForeignKey("classifications.id"))
-    classifications = relationship("Classification", back_populates="partnumber")
+    classifications = relationship("Classification", 
+                                   back_populates="partnumber", 
+                                   cascade="all, delete-orphan", 
+                                   passive_deletes=True,
+                                   foreign_keys="[Classification.partnumber_id]")
 
-    @property
-    def best_classification(self):
-        if not self.classifications:
-            return None
-        return max(self.classifications, key=lambda c: c.confidence_rate or 0)
+    best_classification = relationship("Classification", 
+                                       foreign_keys=[best_classification_id], 
+                                       post_update=True,
+                                       uselist=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['best_classification_id'], 
+            ['classifications.id'], 
+            name='fk_partnumber_best_classification',
+            ondelete='SET NULL',
+            use_alter=True,
+            deferrable=True, 
+            initially='DEFERRED'
+        ),
+    )
+
+class Ncm(db.Model, TimeStampMixin):
+    __tablename__ = "ncms"
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(10), nullable=False, unique=True)
+    description = Column(Text, nullable=False)
+
+    tipi_rules = relationship("Tipi", back_populates="ncm", cascade="all, delete-orphan")
 
 
 class Tipi(db.Model, TimeStampMixin):
     __tablename__ = "tipi"
 
     id = Column(Integer, primary_key=True)
-    ncm = Column(String(10), nullable=False)
-    ex = Column(String(4))
+    ncm_id = Column(Integer, ForeignKey("ncms.id"), nullable=False)
+    ex = Column(String(4), nullable=True)
     description = Column(Text)
-    tax = Column(Numeric(6,2))
+    tax = Column(Numeric(6, 2))
 
     classifications = relationship("Classification", back_populates="tipi")
+    ncm = relationship("Ncm", back_populates="tipi_rules")
 
     __table_args__ = (
-        UniqueConstraint("ncm", "ex", name="uq_tipi_ncm_ex"),
+        UniqueConstraint("ncm_id", "ex", name="uq_tipi_ncm_id_ex"),
     )
 
 
@@ -119,16 +164,23 @@ class Classification(db.Model, TimeStampMixin):
     __tablename__ = "classifications"
 
     id = Column(Integer, primary_key=True)
-    partnumber_id = Column(Integer, ForeignKey("partnumbers.id"))
-    task_id = Column(String(256), ForeignKey("tasks.id"))
-    tipi_id = Column(Integer, ForeignKey("tipi.id"))
-    manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
+    partnumber_id = Column(Integer, ForeignKey("partnumbers.id", ondelete='CASCADE'), nullable=False)
+    task_id = Column(String(256), ForeignKey("tasks.id", ondelete='SET NULL'))
+    tipi_id = Column(Integer, ForeignKey("tipi.id", ondelete='SET NULL'))
+    manufacturer_id = Column(Integer, ForeignKey("manufacturers.id", ondelete='SET NULL'))
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete='SET NULL'), nullable=False, index=True)
+    
     short_description = Column(String(256))
     long_description = Column(Text)
-    status = Column(Enum(ClassificationStatus), default=ClassificationStatus.ACTIVE)
-    confidence_rate = Column(Numeric(4,3))  # exemplo: 0.999
+    status = Column(Enum(ClassificationStatus, name="classification_status"), default=ClassificationStatus.ACTIVE)
+    confidence_rate = Column(Numeric(4, 3))
 
-    partnumber = relationship("Partnumber", back_populates="classifications")
+    partnumber = relationship("Partnumber", back_populates="classifications", foreign_keys=[partnumber_id])
     task = relationship("Task", back_populates="classifications")
     tipi = relationship("Tipi", back_populates="classifications")
     manufacturer = relationship("Manufacturer", back_populates="classifications")
+    created_by_user = relationship("User", foreign_keys=[created_by_user_id], uselist=False)
+
+    __table_args__ = (
+        CheckConstraint("confidence_rate >= 0 AND confidence_rate <= 1", name="chk_confidence_rate"),
+    )
