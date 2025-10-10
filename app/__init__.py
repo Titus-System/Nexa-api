@@ -3,6 +3,7 @@ from flask_cors import CORS
 from app.api import initialize_api
 from app.config import settings
 from app.containers import Container
+from app.database.seed_db import seed_db
 from app.extensions import init_celery, socketio, db
 from app.core.logger_config import logger
 from app.models import *
@@ -28,7 +29,8 @@ def create_app(container: Container | None = None) -> Flask:
         
     db.init_app(app)
     with app.app_context():
-        #db.drop_all()
+        db.drop_all()
         db.create_all()
+        seed_db()
 
     return app

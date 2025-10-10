@@ -1,4 +1,3 @@
-from decimal import Decimal
 import enum
 from sqlalchemy import (Column, ForeignKey, Integer, Numeric, Text, String, 
                         UniqueConstraint, func, Enum, CheckConstraint,

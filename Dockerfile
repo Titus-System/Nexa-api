@@ -1,5 +1,10 @@
 FROM python:3.11-slim
 
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 # Cria diretório da aplicação
 WORKDIR /app
 
@@ -16,8 +21,12 @@ COPY . .
 # Cria pasta de logs
 RUN mkdir -p /app/logs && chmod -R 777 /app/logs
 
+ENV SSL_CERT_DIR /etc/ssl/certs
+
 # Cria usuário appuser
-RUN useradd -m appuser
+RUN useradd -ms /bin/bash appuser && \
+    chown -R appuser:appuser /app
+
 
 # Usa appuser
 USER appuser
