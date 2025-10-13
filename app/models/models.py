@@ -65,12 +65,12 @@ class User(db.Model, TimeStampMixin):
 
     admin = relationship("User", remote_side=[id], back_populates="supervised_users")
     supervised_users = relationship("User", back_populates="admin")
-    tasks = relationship("Task", back_populates="user")
+    classification_tasks = relationship("ClassificationTask", back_populates="user")
     role = relationship('Role', back_populates='users', uselist=False)
 
 
-class Task(db.Model, TimeStampMixin):
-    __tablename__ = "tasks"
+class ClassificationTask(db.Model, TimeStampMixin):
+    __tablename__ = "classification_tasks"
 
     id = Column(String(256), primary_key=True)
     job_id = Column(String(256))
@@ -82,8 +82,8 @@ class Task(db.Model, TimeStampMixin):
     message = Column(String(256))
     user_id = Column(Integer, ForeignKey("users.id", ondelete='SET NULL'))
 
-    user = relationship("User", back_populates="tasks")
-    classifications = relationship("Classification", back_populates="task")
+    user = relationship("User", back_populates="classification_tasks")
+    classifications = relationship("Classification", back_populates="classification_task")
 
 
 class Manufacturer(db.Model, TimeStampMixin):
@@ -164,7 +164,7 @@ class Classification(db.Model, TimeStampMixin):
 
     id = Column(Integer, primary_key=True)
     partnumber_id = Column(Integer, ForeignKey("partnumbers.id", ondelete='CASCADE'), nullable=False)
-    task_id = Column(String(256), ForeignKey("tasks.id", ondelete='SET NULL'))
+    classification_task_id = Column(String(256), ForeignKey("classification_tasks.id", ondelete='SET NULL'))
     tipi_id = Column(Integer, ForeignKey("tipi.id", ondelete='SET NULL'))
     manufacturer_id = Column(Integer, ForeignKey("manufacturers.id", ondelete='SET NULL'))
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete='SET NULL'), nullable=False, index=True)
@@ -175,7 +175,7 @@ class Classification(db.Model, TimeStampMixin):
     confidence_rate = Column(Numeric(4, 3))
 
     partnumber = relationship("Partnumber", back_populates="classifications", foreign_keys=[partnumber_id])
-    task = relationship("Task", back_populates="classifications")
+    classification_task = relationship("ClassificationTask", back_populates="classifications")
     tipi = relationship("Tipi", back_populates="classifications")
     manufacturer = relationship("Manufacturer", back_populates="classifications")
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], uselist=False)
