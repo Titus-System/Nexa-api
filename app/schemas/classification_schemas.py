@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Type, TypeVar
 from pydantic import BaseModel, Field, ValidationError
 from app.core.logger_config import logger
+from app.models.models import TaskStatus
 
 
 T = TypeVar('T', bound=BaseModel)
@@ -37,13 +38,13 @@ class SingleClassificationResponse(BaseModel):
 
 
 class UpdateStatusResponse(BaseModel):
-    status: str
+    status: TaskStatus
     current: Optional[int]
     total: Optional[int]
     message: Optional[str]
 
 class FailedStatusResponse(BaseModel):
-    status: str
+    status: TaskStatus
     job_id: Optional[str] = None
     message: Optional[str] = None
 

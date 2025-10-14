@@ -15,4 +15,9 @@ class IAsyncTaskClient(Protocol):
         """
         ...
 
+    def run_batch_classification_task(self, schema: Any) -> str:
+        """
+        Inicia Tarefa assíncrona em lote e retorna o id da task
+        """
+        ...
 

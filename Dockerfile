@@ -1,9 +1,19 @@
 FROM python:3.11-slim
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        openssl \
+        curl \
+        libssl-dev \
+        netbase \
+        tzdata && \
     update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
+# Define variável de ambiente para SSL
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV SSL_CERT_DIR=/etc/ssl/certs
 
 # Cria diretório da aplicação
 WORKDIR /app
@@ -20,8 +30,6 @@ COPY . .
 
 # Cria pasta de logs
 RUN mkdir -p /app/logs && chmod -R 777 /app/logs
-
-ENV SSL_CERT_DIR /etc/ssl/certs
 
 # Cria usuário appuser
 RUN useradd -ms /bin/bash appuser && \
