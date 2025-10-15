@@ -31,7 +31,4 @@ class PartnumberService:
         if not existing_partnumber:
             return []
 
-        return [
-            ClassificationSchema.model_validate(c).model_dump(mode="json")
-            for c in existing_partnumber.classifications
-        ]
+        return [c for c in existing_partnumber.classifications]

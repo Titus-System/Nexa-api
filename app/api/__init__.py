@@ -3,6 +3,7 @@ from flask_restful import Api
 
 from app.api.classification_resource import PartnumberClassification
 from app.api.health_check import CheckWebSocketConnection, HealthCheck
+from app.api.task_resources import TaskResource
     
 
 def initialize_api(app: Flask) -> Api:
@@ -11,5 +12,6 @@ def initialize_api(app: Flask) -> Api:
     api.add_resource(HealthCheck, "/")
     api.add_resource(CheckWebSocketConnection, "/ws")
     api.add_resource(PartnumberClassification, "/classify-partnumber")
+    api.add_resource(TaskResource, "/tasks")
 
     return api

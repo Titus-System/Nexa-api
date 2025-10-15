@@ -22,3 +22,7 @@ class ClassificationService:
             confidence_rate = attributes.get("confidence_rate")
         ))
         self.db_session.commit()
+
+    def get_by_task_id(self, task_id:str):
+        stmt = select(Classification).where(Classification.classification_task_id == task_id)
+        self.db_session.execute(stmt).all()

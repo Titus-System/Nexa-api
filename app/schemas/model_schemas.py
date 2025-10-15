@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
-from app.models.models import ClassificationStatus
+from app.models.models import ClassificationStatus, TaskStatus
 
 class DTO(BaseModel):
     created_at: Optional[datetime] = None
@@ -30,4 +30,12 @@ class ClassificationSchema(DTO):
 
 
 class ClassificationTaskSchema(DTO):
-    ...
+    id: str
+    job_id: str
+    room_id: str
+    status: TaskStatus
+    current: Optional[int] = None
+    total: Optional[int] = None
+    message: Optional[str] = None
+    user_id: int
+    classifications: list[ClassificationSchema]

@@ -1,6 +1,6 @@
 from app.models.models import ClassificationTask, TaskStatus
 from app.extensions import db
-from sqlalchemy import select, update
+from sqlalchemy import and_, select, update
 
 class ClassificationTaskService:
     def __init__(self):
@@ -66,6 +66,20 @@ class ClassificationTaskService:
         self.db_session.execute(stm)
         self.db_session.commit()
 
-
-
-classification_task_service = ClassificationTaskService()
+    def get_tasks(self, filters: dict):
+        stmt = select(ClassificationTask)
+        conditions = []
+        if "task_id" in filters:
+            conditions.append(ClassificationTask.id == filters["task_id"])
+        if "user_id" in filters:
+            conditions.append(ClassificationTask.user_id == filters["user_id"])
+        if "status" in filters:
+            conditions.append(ClassificationTask.status == filters["status"])
+        if "room_id" in filters:
+            conditions.append(ClassificationTask.room_id == filters["room_id"])
+        if "progress_channel" in filters:
+            conditions.append(ClassificationTask.progress_channel == filters["progress_channel"])
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+        result = self.db_session.execute(stmt).scalars().all()
+        return result
