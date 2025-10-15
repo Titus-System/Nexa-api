@@ -1,15 +1,16 @@
-from app.models.models import ClassificationTask
+from app.models.models import ClassificationTask, TaskStatus
 from app.extensions import db
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 class ClassificationTaskService:
     def __init__(self):
         self.db_session = db.session
 
 
-    def read(task_id: str) -> ClassificationTask:
-        ...
-
+    def read(self, task_id: str) -> ClassificationTask:
+        stmt = select(ClassificationTask).where(ClassificationTask.id == task_id)
+        result = self.db_session.execute(stmt).scalar_one_or_none()
+        return result
 
     def create(self, task_id: str, room_id: str, progress_channel: str, user_id: int):
         self.db_session.add(ClassificationTask(
@@ -54,6 +55,17 @@ class ClassificationTaskService:
         stmt = (update(ClassificationTask).where(ClassificationTask.room_id == room_id).values(**update_attr))
         self.db_session.execute(stmt)
         self.db_session.commit()
+
+    def mark_as_finished(self, task_id: str, data:dict):
+        stm = update(ClassificationTask).where(ClassificationTask.id == task_id).values(
+            status=TaskStatus.DONE.value,
+            current=ClassificationTask.total,
+            total=ClassificationTask.total,
+            message=data.get("message", "Tarefa concluída com sucesso.")
+        )
+        self.db_session.execute(stm)
+        self.db_session.commit()
+
 
 
 classification_task_service = ClassificationTaskService()

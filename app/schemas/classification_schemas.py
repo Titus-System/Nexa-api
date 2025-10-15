@@ -12,6 +12,8 @@ class SingleClassificationRequest(BaseModel):
     description: Optional[str] = None
     manufacturer: Optional[str] = None
     supplier: Optional[str] = None
+    user_id: Optional[int] = 1
+    reclassify: Optional[bool] = False
 
 
 class StartSingleClassificationSchema(SingleClassificationRequest):

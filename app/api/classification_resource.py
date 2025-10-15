@@ -30,13 +30,13 @@ class PartnumberClassification(Resource):
         
         body = body.model_dump(exclude_none=True)
         body["room_id"] = room_id
-        task_id = self.service.start_single_classification(schema= StartSingleClassificationSchema(**body))
+        body["partnumber"] = body["partnumber"].strip().upper()
+        response = self.service.start_single_classification(schema= StartSingleClassificationSchema(**body))
         
         print("Pedido de classificação foi recebido")
         return { 
-            "message": "Seu pedido de classificação foi aceito...", 
-            "task_id": task_id,
-            "room_id": room_id
+            "message": response.get("message"), 
+            "task_id": response.get("task_id"),
+            "room_id": room_id,
+            "classifications": response.get("classifications", [])
         }, 202
-    
-    

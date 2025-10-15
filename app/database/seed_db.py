@@ -3,9 +3,11 @@ from pandas import DataFrame, read_csv, read_excel
 from sqlalchemy import exists, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.models import Ncm, Tipi
+from app.models.models import Ncm, Tipi, UserRole
 from app.extensions import db
 from app.core.logger_config import logger
+from app.services.role_service import RoleService
+from app.services.user_service import UserService
 
 #TODO: Remover essa gambiarra de desativar o SSL depois que o endpoint estiver com o certificado correto
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -134,3 +136,16 @@ def seed_db():
     if table_is_empty("tipi"):
         logger.info("Tabela tipi está vazia. Iniciando processo de registro de alíquotas...")
         seed_tipi()
+
+    role_service = RoleService()
+    for role in UserRole:
+        role_service.create(name=role.value)
+
+    user_service = UserService()
+    user_service.create(
+        name="Nexa Tester",
+        email="tester@nexa.com",
+        password="test1234",
+        role_name="ADMIN",
+        admin_id=None
+    )

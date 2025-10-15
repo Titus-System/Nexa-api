@@ -6,7 +6,9 @@ from app.events.events_enum import EventName, RedisChannelName
 from app.models.models import TaskStatus
 from app.schemas.ai_schemas import AISingleClassificationRequest
 from app.schemas.classification_schemas import FailedStatusResponse, UpdateStatusResponse, validate_and_get_model
+from app.services.classification_table_service import ClassificationService
 from app.services.classification_tasks_service import ClassificationTaskService
+from app.services.partnumber_service import PartnumberService
 from . import external_socketio, celery_logger, redis_client
 from app.config import settings
 
@@ -24,8 +26,11 @@ class SingleClassificationTaskManager:
 
         self.logger = celery_logger
         self.socket = external_socketio
-        self.db_service = ClassificationTaskService()
         self.redis_client = redis_client
+        
+        self.db_service = ClassificationTaskService()
+        self.classification_service = ClassificationService()
+        self.partnumber_service = PartnumberService()
 
     def run(self):
         self._create_task_in_db()
@@ -52,8 +57,9 @@ class SingleClassificationTaskManager:
             self.task_id,
             self.room_id,
             self.progress_channel,
-            user_id=None
+            user_id=self.user_id
         )
+        self.partnumber_service.create(partnumber=self.partnumber)
     
     def _initiate_remote_job(self):
         request_data = AISingleClassificationRequest(
@@ -76,6 +82,7 @@ class SingleClassificationTaskManager:
                 status=TaskStatus.FAILED.value,
                 message="Erro inesperado em Nexa AI ao iniciar processamento do partnumber."
             )
+            self.db_service.mark_as_failed(self.task_id, "Erro ao iniciar job em Nexa AI.")
             self.socket.emit(
                 EventName.CLASSIFICATION_UPDATE_STATUS.value,
                 error_payload,
@@ -109,11 +116,26 @@ class SingleClassificationTaskManager:
     def _handle_done_status(self, data):
         payload = {
             "status": TaskStatus.DONE.value,
-            "message": "Processamento consluído com sucesso.",
+            "message": "Processamento concluído com sucesso.",
             "result": data.get("result", {}),
             "partnumber": self.partnumber,
             "room_id": self.room_id
         }
+        self.db_service.mark_as_finished(self.task_id, {"status": payload["status"], "message": payload["message"]})
+        self.logger.info(f"Marked task {self.task_id} as finished.")
+
+        dto = {
+            "partnumber": self.partnumber,
+            "classification_task_id": self.task_id,
+            "tipi_id": None,
+            "user_id": self.user_id,
+            "short_description": data.get("ncm"),
+            "long_description": data.get("description"),
+            "confidence_rate": 0.98
+        }
+        self.classification_service.create(dto)
+
+
         self.redis_client.publish(
             RedisChannelName.TASK_RESULTS.value, 
             json.dumps(payload)
@@ -127,7 +149,8 @@ class SingleClassificationTaskManager:
         progress_payload = validate_and_get_model(progress_payload, UpdateStatusResponse).model_dump(exclude_none=True)
         self.socket.emit(
             EventName.CLASSIFICATION_UPDATE_STATUS.value,
-            progress_payload
+            progress_payload,
+            to=self.room_id
         )
         self.redis_client.publish(
             'task_progress', 
