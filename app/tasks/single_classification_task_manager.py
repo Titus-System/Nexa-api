@@ -5,10 +5,12 @@ import requests
 from app.events.events_enum import EventName, RedisChannelName
 from app.models.models import TaskStatus
 from app.schemas.ai_schemas import AISingleClassificationRequest
-from app.schemas.classification_schemas import FailedStatusResponse, UpdateStatusResponse, validate_and_get_model
+from app.schemas.classification_schemas import FailedStatusResponse, SingleClassification, SingleClassificationResponse, UpdateStatusResponse, validate_and_get_model
 from app.services.classification_table_service import ClassificationService
 from app.services.classification_tasks_service import ClassificationTaskService
+from app.services.manufacturers_service import ManufacturersService
 from app.services.partnumber_service import PartnumberService
+from app.services.tipi_service import TipiService
 from . import external_socketio, celery_logger, redis_client
 from app.config import settings
 
@@ -28,9 +30,11 @@ class SingleClassificationTaskManager:
         self.socket = external_socketio
         self.redis_client = redis_client
         
-        self.db_service = ClassificationTaskService()
+        self.task_service = ClassificationTaskService()
         self.classification_service = ClassificationService()
         self.partnumber_service = PartnumberService()
+        self.tipi_service = TipiService()
+        self.manufaturer_service = ManufacturersService()
 
     def run(self):
         self._create_task_in_db()
@@ -42,10 +46,10 @@ class SingleClassificationTaskManager:
             job_id = self._initiate_remote_job()
             if not job_id:
                 pubsub.unsubscribe(self.progress_channel)
-                self.db_service.mark_as_failed(self.task_id, "Falha ao iniciar o job de classificação em Nexa IA.")
+                self.task_service.mark_as_failed(self.task_id, "Falha ao iniciar o job de classificação em Nexa IA.")
                 return
             
-            self.db_service.update(self.task_id, {"job_id":job_id})
+            self.task_service.update(self.task_id, {"job_id":job_id})
             self._listen_for_progress(pubsub)
 
         finally:
@@ -53,7 +57,7 @@ class SingleClassificationTaskManager:
                 pubsub.unsubscribe(self.progress_channel)
 
     def _create_task_in_db(self):
-        self.db_service.create(
+        self.task_service.create(
             self.task_id,
             self.room_id,
             self.progress_channel,
@@ -82,7 +86,7 @@ class SingleClassificationTaskManager:
                 status=TaskStatus.FAILED.value,
                 message="Erro inesperado em Nexa AI ao iniciar processamento do partnumber."
             )
-            self.db_service.mark_as_failed(self.task_id, "Erro ao iniciar job em Nexa AI.")
+            self.task_service.mark_as_failed(self.task_id, "Erro ao iniciar job em Nexa AI.")
             self.socket.emit(
                 EventName.CLASSIFICATION_UPDATE_STATUS.value,
                 error_payload,
@@ -121,20 +125,29 @@ class SingleClassificationTaskManager:
             "partnumber": self.partnumber,
             "room_id": self.room_id
         }
-        self.db_service.mark_as_finished(self.task_id, {"status": payload["status"], "message": payload["message"]})
+        self.task_service.mark_as_finished(self.task_id, {"status": payload["status"], "message": payload["message"]})
         self.logger.info(f"Marked task {self.task_id} as finished.")
+        data = validate_and_get_model(data, SingleClassificationResponse)
+        single_classification: SingleClassification = data.result
 
-        dto = {
+        tipi = self.tipi_service.find_from_ncm_ex(single_classification.ncm, single_classification.exception)
+        try:
+            manufacturer = self.manufaturer_service.find_or_create(single_classification.fabricante, single_classification.endereco)
+        except Exception as e:
+            self.logger.info(f"Erro ao lidar com fabricante {single_classification.fabricante}: {e}")
+            manufacturer = None
+
+        create_classification_dto = {
             "partnumber": self.partnumber,
             "classification_task_id": self.task_id,
-            "tipi_id": None,
-            "user_id": self.user_id,
-            "short_description": data.get("ncm"),
-            "long_description": data.get("description"),
-            "confidence_rate": 0.98
+            "tipi_id": tipi.id if tipi else None,
+            "manufacturer_id": manufacturer.id if manufacturer else None,
+            "short_description": None,
+            "long_description": single_classification.description,
+            "confidence_rate": single_classification.confidence_score,
+            "user_id": self.user_id
         }
-        self.classification_service.create(dto)
-
+        self.classification_service.create(create_classification_dto)
 
         self.redis_client.publish(
             RedisChannelName.TASK_RESULTS.value, 
@@ -147,6 +160,13 @@ class SingleClassificationTaskManager:
         self.logger.info(f"\n[PROGRESS] Progresso recebido: {progress_payload}\n")
         progress_payload['status'] = TaskStatus.PROCESSING.value
         progress_payload = validate_and_get_model(progress_payload, UpdateStatusResponse).model_dump(exclude_none=True)
+        self.task_service.update_status(
+            task_id = self.task_id,
+            status = TaskStatus.PROCESSING.value,
+            current = progress_payload.get("current"),
+            total=progress_payload.get("total"),
+            message = progress_payload.get("message")
+        )
         self.socket.emit(
             EventName.CLASSIFICATION_UPDATE_STATUS.value,
             progress_payload,

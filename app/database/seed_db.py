@@ -3,7 +3,7 @@ from pandas import DataFrame, read_csv, read_excel
 from sqlalchemy import exists, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.models import Ncm, Tipi, UserRole
+from app.models.models import Manufacturer, Ncm, Tipi, UserRole
 from app.extensions import db
 from app.core.logger_config import logger
 from app.services.role_service import RoleService
@@ -30,6 +30,7 @@ def gera_tipi_df() -> DataFrame:
     tipi_df = read_excel(tabela_tipi_url, skiprows=7, header=0, dtype={"NCM ":str, "EX":str, "DESCRIÇÃO ":str, "ALÍQUOTA (%)":str})
     logger.info(f"colunas: {tipi_df.columns}")
     tipi_df["NCM "] = tipi_df['NCM '].str.replace(".", "", regex=False)
+    tipi_df.loc[tipi_df["NCM "].str.len() == 7, "NCM "] = tipi_df["NCM "] + "0"
     tipi_df = tipi_df[tipi_df["NCM "].str.len() >= 8]
     tipi_df = tipi_df[tipi_df["NCM "].str.startswith("85")]
     tipi_df["EX"] = (
@@ -42,6 +43,7 @@ def gera_tipi_df() -> DataFrame:
     tipi_df["ALÍQUOTA (%)"] = (
         tipi_df["ALÍQUOTA (%)"]
         .replace("NT", 0)
+        .fillna(0)
         .astype(str)
         .str.replace(",", ".", regex=False)
         .astype(float)
@@ -123,6 +125,21 @@ def seed_tipi():
         logger.error(f"Erro inesperado ao registrar na tabela tipi: {str(e)}")
 
 
+def seed_manufacturers():
+    from .manufacturers import manufacturers_list
+    manuf = []
+    for i in manufacturers_list:
+        register = Manufacturer(
+            name = i.get("FABRICANTE"),
+            address = i.get("ENDERECO"),
+            country = i.get("PAIS")
+        )
+        manuf.append(register)
+    db.session.bulk_save_objects(manuf)
+    db.session.commit()
+    logger.info(f"{len(manuf)} Fabricantes registrados na tabela manufacturers.")
+
+
 def table_is_empty(table_name:str) -> bool:
     table = db.metadata.tables[table_name]
     stmt = select(exists().where(table.c.id != None)) 
@@ -136,6 +153,9 @@ def seed_db():
     if table_is_empty("tipi"):
         logger.info("Tabela tipi está vazia. Iniciando processo de registro de alíquotas...")
         seed_tipi()
+    if table_is_empty("manufacturers"):
+        logger.info("Tabela manufacturers está vazia. Iniciando processo de registro de fabricantes...")
+        seed_manufacturers()
 
     role_service = RoleService()
     for role in UserRole:

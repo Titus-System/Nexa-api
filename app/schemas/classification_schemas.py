@@ -34,8 +34,8 @@ class SingleClassification(BaseModel):
 
 class SingleClassificationResponse(BaseModel):
     status: str
-    message: str
-    partnumber: str
+    message: Optional[str] = None
+    partnumber: Optional[str] = None
     result: SingleClassification
 
 

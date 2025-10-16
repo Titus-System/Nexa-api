@@ -1,15 +1,6 @@
 FROM python:3.11-slim
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        openssl \
-        curl \
-        libssl-dev \
-        netbase \
-        tzdata && \
-    update-ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+
 
 # Define variável de ambiente para SSL
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

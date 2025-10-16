@@ -1,6 +1,6 @@
 from flask import request
 from flask_restful import Resource
-from services.pdfExtrator import extract_part_numbers
+from app.services.pdfExtrator import extract_part_numbers
 
 
 class UploadPedidoResource(Resource):

@@ -16,10 +16,10 @@ class ClassificationService:
             partnumber_id = partnumber_id,
             classification_task_id = attributes["classification_task_id"],
             tipi_id = attributes.get('tipi_id'),
-            manufacturer_id = attributes.get('tipi_id'),
+            manufacturer_id = attributes.get('manufacturer_id'),
             created_by_user_id = attributes.get('user_id', None),
-            short_description = "Short Description",
-            long_description = "Long and complete description.",
+            short_description = attributes.get("short_description"),
+            long_description = attributes.get("long_description"),
             confidence_rate = attributes.get("confidence_rate")
         ))
         self.db_session.commit()
