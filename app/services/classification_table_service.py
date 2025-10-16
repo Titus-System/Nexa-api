@@ -6,6 +6,7 @@ class ClassificationService:
     def __init__(self):
         self.db_session = db.session
 
+
     def create(self, attributes: dict):
         partnumber_id = db.session.execute(
                             select(Partnumber.id).where(Partnumber.code == attributes["partnumber"])

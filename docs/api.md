@@ -131,6 +131,91 @@ GET /tasks?job_id=456&progress_channel=room_abc
 
 ---
 
+
+### 2.3. Listar Partnumbers com classificações
+- **Endpoint:** `/partnumbers`
+- **Método:** `GET`
+
+#### **Resposta**
+
+* **Status:** 200 OK
+* **Formato:** JSON
+
+```json
+[
+  {
+    "created_at": "2025-10-15T22:43:33.082578Z",
+    "updated_at": null,
+    "id": 1,
+    "code": "PNTEST12345",
+    "best_classification_id": null,
+    "classifications": [
+      {
+        "created_at": "2025-10-15T22:43:37.119387Z",
+        "updated_at": null,
+        "id": 1,
+        "partnumber_id": 1,
+        "classification_task_id": "f7cb936a-b5f2-4ac0-aeff-20008beb0b4f",
+        "tipi_id": null,
+        "manufacturer_id": null,
+        "created_by_user_id": 1,
+        "short_description": "Short Description",
+        "long_description": "Long and complete description.",
+        "status": "ACTIVE",
+        "confidence_rate": 0.98
+      }
+    ],
+    "best_classification": null
+  },
+  {
+    "created_at": "2025-10-15T22:43:38.584931Z",
+    "updated_at": null,
+    "id": 2,
+    "code": "PNUMBERTEST12345",
+    "best_classification_id": null,
+    "classifications": [],
+    "best_classification": null
+  }
+]
+```
+
+#### 2.4. Buscar Partnumber
+- **Endpoint:** `/partnumbers/<partnumber_code>`
+- **Método:** `GET`
+
+```
+GET /partnumbers/PNTEST12345
+```
+
+#### **Resposta**
+```json
+{
+  "created_at": "2025-10-15T22:43:33.082578Z",
+  "updated_at": null,
+  "id": 1,
+  "code": "PNTEST12345",
+  "best_classification_id": null,
+  "classifications": [
+    {
+      "created_at": "2025-10-15T22:43:37.119387Z",
+      "updated_at": null,
+      "id": 1,
+      "partnumber_id": 1,
+      "classification_task_id": "f7cb936a-b5f2-4ac0-aeff-20008beb0b4f",
+      "tipi_id": null,
+      "manufacturer_id": null,
+      "created_by_user_id": 1,
+      "short_description": "Short Description",
+      "long_description": "Long and complete description.",
+      "status": "ACTIVE",
+      "confidence_rate": 0.98
+    }
+  ],
+  "best_classification": null
+}
+```
+
+
 ## 3. WebSocket (Socket.IO)
 
 ### 3.1. Conexão

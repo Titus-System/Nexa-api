@@ -39,3 +39,11 @@ class ClassificationTaskSchema(DTO):
     message: Optional[str] = None
     user_id: int
     classifications: list[ClassificationSchema]
+
+
+class PartnumberSchema(DTO):
+    id: int
+    code: str
+    best_classification_id: Optional[str] = None
+    classifications: Optional[list[ClassificationSchema]] = None
+    best_classification: Optional[ClassificationSchema] = None
