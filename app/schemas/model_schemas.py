@@ -17,6 +17,18 @@ class DTO(BaseModel):
         "from_attributes": True
     }
 
+class ManufacturerSchema(DTO):
+    id: int
+    name: str
+    address: Optional[str] = None
+    country: Optional[str] = None
+    classifications: Optional[list[ClassificationSchema]] = None
+
+class ManufacturerDTO(DTO):
+    id: int
+    name: str
+    address: Optional[str] = None
+    country: Optional[str] = None
 
 class ClassificationSchema(DTO):
     id: int
@@ -29,6 +41,9 @@ class ClassificationSchema(DTO):
     long_description: Optional[str] = None
     status: Optional[ClassificationStatus] = None
     confidence_rate: Optional[float]
+    manufacturer: Optional[ManufacturerDTO] = None
+    tipi: Optional[TipiDTO] = None
+    partnumber: Optional[PartnumberDTO] = None
 
 
 class ClassificationTaskSchema(DTO):
@@ -51,6 +66,13 @@ class PartnumberSchema(DTO):
     best_classification: Optional[ClassificationSchema] = None
 
 
+class PartnumberDTO(DTO):
+    id: int
+    code: str
+    best_classification_id: Optional[str] = None
+
+
+
 class TipiSchema(DTO):
     id: int
     ncm_id: int
@@ -66,9 +88,29 @@ class TipiSchema(DTO):
             return float(v)
         return v
 
+class TipiDTO(DTO):
+    id: int
+    ncm_id: int
+    ex: str
+    description:Optional[str] = None
+    tax: float
+    ncm: Optional[NcmDTO] = None
+
+    @field_validator("*", mode="before")
+    def convert_decimal(cls, v):
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
+    
 
 class NcmSchema(DTO):
     id: int
     code: str
     description: Optional[str] = None
-    tipi_rules: Optional[list[int]]
+    tipi_rules: Optional[list[TipiSchema]]
+
+
+class NcmDTO(DTO):
+    id: int
+    code: str
+    description: Optional[str] = None

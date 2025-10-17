@@ -132,7 +132,7 @@ class SingleClassificationTaskManager:
 
         tipi = self.tipi_service.find_from_ncm_ex(single_classification.ncm, single_classification.exception)
         try:
-            manufacturer = self.manufaturer_service.find_or_create(single_classification.fabricante, single_classification.endereco)
+            manufacturer = self.manufaturer_service.find_or_create(single_classification.fabricante, single_classification.endereco, single_classification.pais)
         except Exception as e:
             self.logger.info(f"Erro ao lidar com fabricante {single_classification.fabricante}: {e}")
             manufacturer = None
