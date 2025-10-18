@@ -10,7 +10,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
 
 ---
 
-## 1. Fluxo Completo da Comunicação
+## 1. Fluxo Completo da Classificação de Um Único Partnumber
 
 ### 1.1. Início da Tarefa (HTTP POST)
 - A Nexa API recebe uma requisição REST do cliente para classificar um partnumber.
@@ -99,6 +99,98 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
 - A Nexa API intercepta essa mensagem, publica o resultado final no canal Redis principal (`task_results`) e encerra a sala WebSocket do usuário.
 
 ---
+
+## 2. Fluxo completo da classificação de múltiplos partnumbers
+
+### 2.1. Início da Tarefa (HTTP POST)
+- A Nexa API faz um **POST** para o endpoint do servidor de IA:
+
+  **Endpoint:**
+  ```
+  POST {NEXA_AI_SERVER}/process/batch_partnumbers
+  ```
+
+  **Payload:**
+  ```json
+  {
+    "progress_channel": "progress-123e4567-e89b-12d3-a456-426614174000",
+    "partnumbers": ["PN-TEST-12345"]
+  }
+  ```
+  **Schema real:**
+    ```python
+    class AIBatchClassificationRequest(BaseModel):
+        progress_channel: str
+        partnumber: list[str]
+    ```
+
+- O Servidor de IA responde imediatamente com:
+  ```json
+  {
+    "job_id": "abc-123-xyz"
+  }
+  ```
+
+### 2.2. Progresso da Tarefa (Redis Pub/Sub)
+- O Servidor de IA publica mensagens de progresso no canal Redis informado (`progress_<uuid4>`).
+- A Nexa API está inscrita nesse canal e retransmite cada atualização para o frontend via WebSocket.
+
+  **Exemplo de mensagem de progresso:**
+  ```json
+  {
+    "status": "processing",
+    "job_id": "abc-123-xyz",
+    "progress": {
+      "current": 2,
+      "total": 5,
+      "message": "Analisando dados..."
+    }
+  }
+  ```
+
+### 1.3. Falha na conslusão da tarefa (Redis Pub/Sub)
+- O Servidor de IA publica mensagens de falha no canal Redis informado (`progress_channel`).
+
+    ```json
+    {
+    "status": "failed",
+    "job_id": "abc-123-xyz",
+    "error": "Descrição do erro"
+    }
+    ```
+
+### 1.4. Resultados Parciais da Tarefa
+- Para cada partnumber processado, o Servidor de IA publica no canal a classificação encontrada:
+```json
+{
+  "status": "partial_result",
+  "current": 2,
+  "total": 11,
+  "message": "Resultado parcial da classificação em lote.",
+  "single_classification": {
+    "partnumber": "PNTESTE12345",
+    "ncm": "12345678",
+    "description": "Descrição detalhada",
+    "exception": "01",
+    "nve": "01",
+    "fabricante": "fábrica Nexa",
+    "endereco": "av pequim",
+    "pais": "China",
+    "confidence_score": 0.98
+  }
+}
+```
+
+### 1.5. Finalização da Tarefa
+- Ao concluir, o Servidor de IA publica no mesmo canal:
+  ```json
+  {
+    "status": "done",
+    "job_id": "abc-123-xyz"
+  }
+  ```
+
+- A Nexa API intercepta essa mensagem, publica o resultado final no canal Redis principal (`task_results`) e encerra a sala WebSocket do usuário.
 
 ## 2. Especificação dos Endpoints e Mensagens
 

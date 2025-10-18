@@ -25,6 +25,7 @@ class TaskStatus(str, enum.Enum):
     PROCESSING = "PROCESSING"
     FAILED = "FAILED"
     DONE = "DONE"
+    PARTIAL_RESULT = "PARTIAL_RESULT"
 
 
 role_permissions = db.Table('role_permissions',

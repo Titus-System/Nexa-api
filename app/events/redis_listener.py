@@ -1,11 +1,11 @@
 import json
 import redis
 from app.config import settings
-from app.events.classification_events import single_classification_finished_event
+from app.events.classification_events import batch_classification_finished_event, single_classification_finished_event
 from app.events.events_enum import RedisChannelName
 from app.core.logger_config import logger
 from app.extensions import socketio
-from app.schemas.classification_schemas import SingleClassificationResponse, validate_and_get_model
+from app.schemas.classification_schemas import BatchClassificationResponse, SingleClassificationResponse, validate_and_get_model
 
 class RedisListener:
     def __init__(self):
@@ -32,6 +32,8 @@ class RedisListener:
     def _handle_channel(self, channel: str, data: dict):
         if channel == RedisChannelName.TASK_RESULTS.value:
             self._handle_task_results(data)
+        if channel == RedisChannelName.BATCH_TASK_DONE.value:
+            self._handle_batch_task_done(data)
 
 
     def _handle_task_results(self, data: dict):
@@ -47,3 +49,13 @@ class RedisListener:
 
         self.socket.close_room(room_id)
 
+    def _handle_batch_task_done(self, data:dict):
+        room_id = data.pop("room_id", None)
+        if not room_id:
+            self.logger.error("room_id ausente nos dados de resultados da tarefa.")
+            return
+
+        self.logger.info(f"[INTERCEPTADO]: Resultado para a sala {room_id}. Resultado: {data.get('result')}")
+
+        payload = validate_and_get_model(data, BatchClassificationResponse)
+        batch_classification_finished_event(payload, room_id)
