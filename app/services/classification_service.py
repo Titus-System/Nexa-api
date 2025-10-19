@@ -1,13 +1,14 @@
 from app.schemas.model_schemas import ClassificationSchema
 from app.services.partnumber_service import PartnumberService
 from app.services.protocols import IClassificationService
-from app.schemas.classification_schemas import StartSingleClassificationSchema
+from app.schemas.classification_schemas import StartBatchClassificationSchema, StartSingleClassificationSchema
 from app.services.protocols import IAsyncTaskClient
-
+from app.core.logger_config import logger
 
 class ClassificationService(IClassificationService):
     def __init__(self, task_client:IAsyncTaskClient):
         self.task_client = task_client
+        self.logger = logger
         self.partnumber_service = PartnumberService()
 
     def start_single_classification(self, schema:StartSingleClassificationSchema) -> dict:
@@ -26,4 +27,33 @@ class ClassificationService(IClassificationService):
             "message": message,
             "task_id": task_id,
             "classifications": partnumber_classifications
+        }
+
+    def start_batch_classification(self, schema: StartBatchClassificationSchema) -> dict:
+        self.logger.info(f"Serviço para classificação de partnumbers: {schema.partnumbers}")
+        task_id = None
+        existing_classifications = {}
+        for p in schema.partnumbers:
+            cl = self.partnumber_service.get_classifications(partnumber=p)
+            if cl:
+                cl = [ClassificationSchema.model_validate(c).model_dump(mode="json") for c in cl]
+                existing_classifications[p] = cl
+
+        send_for_classification = []
+        if not schema.reclassify:
+            for p in schema.partnumbers:
+                if p not in existing_classifications.keys():
+                    send_for_classification.append(p)
+        else:
+            send_for_classification = schema.partnumbers
+            
+        self.logger.info(f"Partnumbers para enviar à classificação de IA: {send_for_classification}")
+        if send_for_classification:
+            schema.partnumbers = send_for_classification
+            task_id = self.task_client.run_batch_classification_task(schema)
+        
+        return {
+            "message": "Seu pedido de classificação em lote foi recebido e está sendo processado.",
+            "task_id": task_id,
+            "classifications": existing_classifications
         }

@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restful import Api
 
-from app.api.classification_resource import PartnumberClassification
+from app.api.classification_resource import BatchClassificationResource, PartnumberClassification
 from app.api.health_check import CheckWebSocketConnection, HealthCheck
 from app.api.partnumber_resource import PartnumberResource
 from app.api.task_resources import TaskResource
@@ -18,6 +18,6 @@ def initialize_api(app: Flask) -> Api:
     api.add_resource(TaskResource, "/tasks")
     api.add_resource(PartnumberResource, "/partnumbers", "/partnumbers/<string:partnumber>")
     api.add_resource(UploadPedidoResource, "/upload-pdf")
-
+    api.add_resource(BatchClassificationResource, "/classify-batch")
 
     return api

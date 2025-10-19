@@ -11,7 +11,7 @@ Esta API permite que clientes solicitem a classificação de partnumbers de form
 
 ## 2. HTTP REST
 
-### 2.1. Iniciar Classificação
+### 2.1. Iniciar Classificação de Partnumber Único
 
 - **Endpoint:** `/classify-partnumber`
 - **Método:** `POST`
@@ -59,6 +59,40 @@ Campos:
   ]
 }
 ```
+
+### 2.2. Iniciar classificação de Lista de Partnumbers
+- **Endpoint:** `/classify-batch`
+- **Método:** `POST`
+- **Content-Type:** `application/json`
+
+#### Corpo da requisição
+```json
+{
+  "partnumbers": ["PN-TEST-12345",],
+  "user_id": "[OPCIONAL] <id do usuário>",
+  "reclassify": false
+}
+```
+Campos:
+- `partnumbers` (**obrigatório**): list[string]
+- `user_id`: string (opcional)
+- `reclassify`: boolean (opcional, false por padrão)
+
+#### Resposta de Sucesso (`202 Accepted`)
+```json
+{
+  "message": "Seu pedido de classificação em lote foi recebido e está sendo processado.",
+  "task_id": "a0766941-9df2-478c-ab8a-1bf008dd5292",
+  "room_id": "59a4703f-9b89-4a66-9f03-6600f411ea99",
+  "classifications": {
+    "PN-TEST-12345": [
+      {...}
+    ]
+  }
+}
+```
+- Sendo que o campo `classifications` lista as classificações já existentes para cada partnumber da requisição.
+
 
 ### 2.2. Buscar Task
 

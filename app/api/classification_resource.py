@@ -6,8 +6,38 @@ import uuid
 
 from app.containers import Container
 from app.core.logger_config import logger
-from app.schemas.classification_schemas import SingleClassificationRequest, StartSingleClassificationSchema
+from app.schemas.classification_schemas import BatchClassificationRequest, SingleClassificationRequest, StartBatchClassificationSchema, StartSingleClassificationSchema
 from app.services.protocols import IClassificationService
+
+
+class BatchClassificationResource(Resource):
+    @inject
+    def __init__(
+        self, 
+        service: IClassificationService = Provide[Container.classification_service],
+    ):
+        self.service = service
+        super().__init__()
+
+    def post(self):
+        try:
+            body = BatchClassificationRequest(**request.get_json())
+        except ValidationError as e:
+            return {"errors": e.errors()}, 400
+        
+        room_id = str(uuid.uuid4())
+        
+        body = body.model_dump(exclude_none=True)
+        body["room_id"] = room_id
+        response = self.service.start_batch_classification(schema= StartBatchClassificationSchema(**body))
+        
+        print("Pedido de classificação foi recebido")
+        return { 
+            "message": response.get("message"), 
+            "task_id": response.get("task_id"),
+            "room_id": room_id,
+            "classifications": response.get("classifications", [])
+        }, 202
 
 
 class PartnumberClassification(Resource):

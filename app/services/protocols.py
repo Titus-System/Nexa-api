@@ -7,6 +7,8 @@ class IClassificationService(Protocol):
     def start_single_classification(self, schema):
         ...
 
+    def start_batch_classification(self, schema):
+        ...
 
 class IAsyncTaskClient(Protocol):
     def run_single_classification_task(self, schema: StartSingleClassificationSchema) -> str:

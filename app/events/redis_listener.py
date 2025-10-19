@@ -59,3 +59,4 @@ class RedisListener:
 
         payload = validate_and_get_model(data, BatchClassificationResponse)
         batch_classification_finished_event(payload, room_id)
+        self.socket.close_room(room_id)

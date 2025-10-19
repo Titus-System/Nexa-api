@@ -20,11 +20,13 @@ class StartSingleClassificationSchema(SingleClassificationRequest):
     room_id: str = Field(..., description="O ID da sala do Socket.IO para retorno da notificação.")
 
 
-class StartBatchClassificationSchema(BaseModel):
+class BatchClassificationRequest(BaseModel):
     partnumbers: list[str]
+    user_id: Optional[int] = 1
+    reclassify: Optional[bool] = False
+
+class StartBatchClassificationSchema(BatchClassificationRequest):
     room_id: str
-    user_id: Optional[int]
-    reclassify: Optional[bool]
 
 
 class SingleClassification(BaseModel):

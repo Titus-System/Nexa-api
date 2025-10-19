@@ -121,7 +121,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
     ```python
     class AIBatchClassificationRequest(BaseModel):
         progress_channel: str
-        partnumber: list[str]
+        partnumbers: list[str]
     ```
 
 - O Servidor de IA responde imediatamente com:
@@ -164,6 +164,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
 ```json
 {
   "status": "partial_result",
+  "job_id": "job-<id>",
   "current": 2,
   "total": 11,
   "message": "Resultado parcial da classificação em lote.",
@@ -190,7 +191,7 @@ Esse modelo visa desacoplamento e comunicação em tempo real entre os sistemas.
   }
   ```
 
-- A Nexa API intercepta essa mensagem, publica o resultado final no canal Redis principal (`task_results`) e encerra a sala WebSocket do usuário.
+- A Nexa API recebe essa mensagem e cria uma nova publicação no canal Redis `batch_task_done` com os dados finais de encerramento da task. A própria API lê essa publicação, emite um evento pra o usuário e encerra a conexão websocket.
 
 ## 2. Especificação dos Endpoints e Mensagens
 

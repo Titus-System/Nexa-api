@@ -38,6 +38,7 @@ class BatchClassificationTaskManager:
 
     
     def run(self):
+        self.logger.info(f"\n[INICIANDO] Iniciando processamento em lote...\n")
         self._create_task_in_db()
         try:
             pubsub = self.redis_client.pubsub(ignore_subscribe_messages=True)
@@ -101,6 +102,7 @@ class BatchClassificationTaskManager:
                 status = data.get("status")
                 
                 if self._handle_message(status, data):
+                    self.logger.info(f"\n[LISTEN] mensagem ouvida no redis: {data}")
                     break
 
             except (json.JSONDecodeError, TypeError) as e:
@@ -140,8 +142,7 @@ class BatchClassificationTaskManager:
 
     def _handle_partial_result(self, data:dict):
         # atualizar status da task
-        partial_result = data.get('partial_result', {})
-        self.logger.info(f"\n[RESULTADO PARCIAL] Resultado parcial recebido: {partial_result}\n")
+        self.logger.info(f"\n[RESULTADO PARCIAL] Resultado parcial recebido: {data}\n")
         self.task_service.update_status(
             task_id = self.task_id,
             status = TaskStatus.PROCESSING.value,
