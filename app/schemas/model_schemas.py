@@ -47,10 +47,10 @@ class ClassificationSchema(DTO):
 
 
 class ClassificationTaskSchema(DTO):
-    id: str
-    job_id: str
-    room_id: str
-    status: TaskStatus
+    id: str 
+    job_id: Optional[str] = None
+    room_id: Optional[str] = None
+    status: Optional[TaskStatus] = None
     current: Optional[int] = None
     total: Optional[int] = None
     message: Optional[str] = None
