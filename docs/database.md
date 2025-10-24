@@ -8,9 +8,11 @@ O banco de dados está sendo implementado em PostgreSQL.
 
 -----
 
-## 2\. Modelo Lógico
+## 2\. Modelos Conceitual e Lógico
 
-O diagrama abaixo ilustra a relação entre as principais entidades do sistema, incluindo o novo modelo de autorização.
+O diagrama abaixo ilustra a relação entre as entidades do sistema.
+
+![modelo_conceitual](./modelo_conceitual.PNG)
 
 ![modelo_logico](./modelo_logico.png)
 
@@ -65,12 +67,19 @@ Armazena as informações dos usuários que interagem com o sistema NEXA.
 
 Registra as tarefas assíncronas de processamento de documentos.
 
-| Nome da Coluna | Tipo de Dado | Restrições | Descrição |
-| :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR(256)` | **PK** | Identificador único da tarefa. |
-| `status` | `task_status` | NOT NULL, DEFAULT 'STARTED' | Estado atual da tarefa (`STARTED`, `PROCESSING`, etc.). |
-| `user_id` | `INTEGER` | **FK** (users.id) | Usuário que iniciou a tarefa. |
-| `...` | `...` | `...` | (demais colunas como na versão anterior) |
+| Nome da Coluna     | Tipo de Dado   | Restrições                              | Descrição                                                                      |
+| :----------------- | :------------- | :-------------------------------------- | :----------------------------------------------------------------------------- |
+| `id`               | `VARCHAR(256)` | **PK**                                  | Identificador único da tarefa.                                                 |
+| `job_id`           | `VARCHAR(256)` | —                                       | Identificador interno do job de processamento (ex.: ID da fila ou worker).     |
+| `room_id`          | `VARCHAR(256)` | —                                       | Canal de comunicação em tempo real (WebSocket/SSE) vinculado à tarefa.         |
+| `progress_channel` | `VARCHAR(256)` | —                                       | Canal usado para atualização de progresso da tarefa.                           |
+| `status`           | `task_status`  | NOT NULL, DEFAULT `'STARTED'`           | Estado atual da tarefa (`STARTED`, `PROCESSING`, `COMPLETED`, `FAILED`, etc.). |
+| `current`          | `INTEGER`      | —                                       | Número atual de itens processados.                                             |
+| `total`            | `INTEGER`      | —                                       | Quantidade total de itens a processar.                                         |
+| `message`          | `VARCHAR(256)` | —                                       | Mensagem de status ou erro associada à execução da tarefa.                     |
+| `user_id`          | `INTEGER`      | **FK** (`users.id`), ON DELETE SET NULL | Usuário que iniciou a tarefa.                                                  |
+| `created_at`       | `TIMESTAMP`    | NOT NULL                                | Data/hora de criação (herdado de `TimeStampMixin`).                            |
+| `updated_at`       | `TIMESTAMP`    | NOT NULL                                | Data/hora da última atualização (herdado de `TimeStampMixin`).                 |
 
 ### Tabela: `partnumbers`
 
@@ -129,15 +138,21 @@ Armazena as regras de tributação da Tabela IPI, incluindo as exceções (Ex). 
 
 Tabela central que armazena os resultados das classificações fiscais geradas.
 
-| Nome da Coluna | Tipo de Dado | Restrições | Descrição |
-| :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | **PK**, IDENTITY | Identificador único da classificação. |
-| `partnumber_id`|`INTEGER`| **FK** (partnumbers.id), NOT NULL | Part number que foi classificado. |
-| `task_id` | `VARCHAR(256)`| **FK** (tasks.id) | Tarefa que gerou esta classificação (se aplicável). |
-| `tipi_id` | `INTEGER` | **FK** (tipi.id) | Regra da TIPI (NCM/Ex) atribuída a esta classificação. |
-| `manufacturer_id`|`INTEGER`| **FK** (manufacturers.id) | Fabricante associado a esta classificação. |
-| `created_by_user_id` | `INTEGER` | **FK** (users.id), NOT NULL | **Auditoria:** Usuário que gerou/criou esta classificação. |
-| `...` | `...` | `...` | (demais colunas como na versão anterior) |
+| Nome da Coluna           | Tipo de Dado            | Restrições                                               | Descrição                                                       |
+| :----------------------- | :---------------------- | :------------------------------------------------------- | :-------------------------------------------------------------- |
+| `id`                     | `INTEGER`               | **PK**, IDENTITY                                         | Identificador único da classificação.                           |
+| `partnumber_id`          | `INTEGER`               | **FK** (`partnumbers.id`), NOT NULL, ON DELETE CASCADE   | Part number que foi classificado.                               |
+| `classification_task_id` | `VARCHAR(256)`          | **FK** (`classification_tasks.id`), ON DELETE SET NULL   | Tarefa que originou esta classificação (se aplicável).          |
+| `tipi_id`                | `INTEGER`               | **FK** (`tipi.id`), ON DELETE SET NULL                   | Regra TIPI (NCM/Ex) atribuída à classificação.                  |
+| `manufacturer_id`        | `INTEGER`               | **FK** (`manufacturers.id`), ON DELETE SET NULL          | Fabricante associado ao produto classificado.                   |
+| `created_by_user_id`     | `INTEGER`               | **FK** (`users.id`), NOT NULL, ON DELETE SET NULL, INDEX | **Auditoria:** Usuário que criou ou aprovou a classificação.    |
+| `short_description`      | `VARCHAR(256)`          | —                                                        | Descrição resumida da classificação.                            |
+| `long_description`       | `TEXT`                  | —                                                        | Descrição detalhada da classificação.                           |
+| `status`                 | `classification_status` | DEFAULT `'ACTIVE'`                                       | Estado da classificação (`ACTIVE`, `INACTIVE`, `REVIEW`, etc.). |
+| `confidence_rate`        | `NUMERIC(4,3)`          | CHECK (`confidence_rate >= 0 AND confidence_rate <= 1`)  | Grau de confiança do modelo ou operador na classificação.       |
+| `created_at`             | `TIMESTAMP`             | NOT NULL                                                 | Data/hora de criação (herdado de `TimeStampMixin`).             |
+| `updated_at`             | `TIMESTAMP`             | NOT NULL                                                 | Data/hora da última atualização (herdado de `TimeStampMixin`).  |
+
 
 -----
 

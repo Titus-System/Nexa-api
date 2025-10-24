@@ -29,8 +29,10 @@ Bem-vindo ao backend do projeto Nexa! Este servidor é o núcleo inteligente do 
 O Nexa API é responsável por:
 
 - Receber requisições de classificação de partnumbers (partnumbers individuais ou em pdf) via HTTP REST.
+- Extrair partnumbers de PDF enviado para classificação.
 - Orquestrar o processamento assíncrono dessas tarefas, integrando-se a um servidor de IA externo.
 - Gerenciar e notificar o progresso e o resultado final para o frontend em tempo real via WebSocket (Socket.IO).
+- Manter a persistência dos dados encontrados e das classificações geradas pelo servidor de IA.
 - Garantir rastreabilidade, robustez e escalabilidade em todo o fluxo de classificação.
 
 **Em resumo:**
@@ -145,18 +147,3 @@ docker compose start
 ```
 
 ---
-
-## Estrutura do Projeto
-
-```bash
-.
-├── app/               # Código principal do backend
-├── requirements.txt
-├── run.py
-├── Dockerfile
-├── docker-compose.yml
-├── README.md
-└── docs/
- ├── api.md
- └── ai_server_integration.md
-```
