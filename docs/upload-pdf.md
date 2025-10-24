@@ -1,11 +1,11 @@
-# 📄 Endpoint: Upload de Pedido (Extração de Part Numbers)
+# 📄 Endpoint: Upload de Pedido e Início da Classificação em Lote
 
 ## 🧠 Visão Geral
 
-Esta rota permite que o usuário envie um **arquivo PDF contendo um pedido de compra**.  
-O backend processa o PDF **diretamente em memória**, sem salvar o arquivo em disco, e realiza a **extração automática dos Part Numbers (PNs)** dos produtos listados no documento.
+Esta rota permite o envio de um **arquivo PDF contendo um pedido de compra**, realiza a **extração automática dos Part Numbers (PNs)** e **inicia um processo de classificação em lote** desses códigos.
 
-Ela é utilizada principalmente para automatizar a identificação de componentes eletrônicos e códigos de produto a partir de pedidos recebidos em formato PDF.
+A requisição é feita via `multipart/form-data`, e o arquivo é processado **diretamente em memória** — sem ser salvo em disco.
+Após a extração, o backend cria uma tarefa de classificação (`task_id`) e um identificador de sala (`room_id`) para acompanhar o processamento em tempo real (por exemplo, via WebSocket).
 
 ---
 
@@ -16,116 +16,150 @@ POST /upload-pdf
 ```
 
 ### 📦 Tipo de Requisição
+
 `multipart/form-data`
 
 ---
 
 ## 📥 O que a rota espera receber
 
-A rota espera um **arquivo PDF** enviado através do campo `pedido`.
+A rota espera **um arquivo PDF** e **alguns campos opcionais** de controle de processamento.
 
-| Campo   | Tipo  | Obrigatório | Descrição |
-|----------|-------|-------------|------------|
-| `pedido` | `File (.pdf)` | ✅ | Arquivo PDF contendo o pedido de compra. |
-
-Exemplo de envio via **Postman** ou **Insomnia**:
-
-- Método: `POST`
-- URL: `http://localhost:5000/upload-pdf`
-- Body → `form-data`
-  - **Key:** `pedido`  
-  - **Type:** `File`  
-  - **Value:** `pedido_de_compra.pdf`
+| Campo        | Tipo                         | Obrigatório | Descrição                                                                                       |
+| ------------ | ---------------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
+| `pedido`     | `File (.pdf)`                | ✅           | Arquivo PDF contendo o pedido de compra.                                                        |
+| `user_id`    | `integer`                    | ❌           | ID do usuário que enviou o pedido. Padrão: `1`.                                                 |
+| `reclassify` | `boolean` (`true` / `false`) | ❌           | Indica se os PNs devem ser reclassificados, mesmo que já existam no histórico. Padrão: `false`. |
 
 ---
 
-## ⚙️ Etapas de Processamento
+### 🧩 Exemplo de envio no Postman / Insomnia
 
-1. **Recebimento do arquivo:**  
-   O endpoint valida se um arquivo foi enviado e se a extensão é `.pdf`.  
-   Caso contrário, retorna um erro 400.
+* Método: `POST`
+* URL: `http://localhost:5000/upload-pdf`
+* Body → `form-data`
 
-2. **Leitura em memória:**  
-   O conteúdo do PDF é carregado diretamente na memória do servidor (`file.read()`), sem salvar ou gerar arquivos temporários no sistema.
-
-3. **Extração de texto com `pdfplumber`:**  
-   A função `extract_part_numbers(pdf_bytes)` é chamada.  
-   Ela:
-   - Abre o PDF usando `pdfplumber` a partir de um *stream* de bytes;
-   - Extrai o texto de todas as páginas;
-   - Localiza a **tabela de itens** no arquivo;
-   - Identifica Part Numbers por dois padrões:
-     - **Com prefixo:** `PN:XXXXXX`
-     - **Sem prefixo:** `- XXXX` (seguindo regras específicas de filtragem para evitar falsos positivos);
-   - Remove duplicados e ordena os PNs conforme aparecem no texto original.
-
-4. **Geração da resposta:**  
-   A lista de Part Numbers extraídos é enviada de volta ao cliente em formato JSON.
+  * **Key:** `pedido` → Type: `File` → Value: `pedido_cliente.pdf`
+  * **Key:** `user_id` → Type: `Text` → Value: `12`
+  * **Key:** `reclassify` → Type: `Text` → Value: `true`
 
 ---
 
-## 📤 Resposta (Saída)
+## ⚙️ Etapas de Processamento Interno
 
-### ✅ Em caso de sucesso (`HTTP 200`)
+1. **Validação do arquivo:**
+   Verifica se o campo `pedido` existe, se o nome não está vazio e se o formato é `.pdf`.
+
+2. **Leitura em memória:**
+   O arquivo é lido diretamente em memória (`file.read()`), sem criação de arquivos temporários.
+
+3. **Extração de Part Numbers:**
+   O método `extract_part_numbers(pdf_bytes)` é chamado e:
+
+   * Abre o PDF com `pdfplumber`;
+   * Extrai o texto de todas as páginas;
+   * Identifica Part Numbers usando expressões regulares (ex: `PN:XXXXXX` ou códigos alfanuméricos longos);
+   * Remove duplicatas e retorna uma lista única e ordenada.
+
+4. **Criação da tarefa de classificação:**
+   Gera um `room_id` (UUID) e cria um objeto `StartBatchClassificationSchema` com:
+
+   ```python
+   {
+     "partnumbers": [...],
+     "room_id": "...",
+     "reclassify": false,
+     "user_id": 1
+   }
+   ```
+
+   Esse schema é passado para o `ClassificationService.start_batch_classification(schema)`.
+
+5. **Retorno ao cliente:**
+   O servidor responde imediatamente com `HTTP 202`, indicando que o processamento foi aceito e será executado de forma assíncrona.
+
+---
+
+## 📤 Respostas (Saída)
+
+### ✅ Sucesso (`HTTP 202`)
+
 ```json
 {
-  "message": "Arquivo processado com sucesso!",
-  "part_numbers": [
-    "12.237",
-    "LM358N",
-    "74HC595",
-    "TL072",
-    "BC337"
+  "message": "PDF recebido e processado com sucesso! Partnumbers extraídos estão sendo classificados.",
+  "task_id": "43d0e8a1-1a8c-4a8d-9f0f-623ba203e64d",
+  "room_id": "9df6c237-23a3-4df5-a912-b5dc12e8ad80",
+  "classifications": [
+    {...},
   ],
-  "total": 5
+  "partnumbers": ["LM358N", "74HC595", "BC337"],
+  "total_partnumbers": 3
 }
 ```
 
-| Campo | Tipo | Descrição |
-|--------|------|-----------|
-| `message` | `string` | Mensagem de sucesso. |
-| `part_numbers` | `array` | Lista dos PNs encontrados no PDF. |
-| `total` | `integer` | Quantidade total de PNs identificados. |
+| Campo               | Tipo            | Descrição                                                       |
+| ------------------- | --------------- | --------------------------------------------------------------- |
+| `message`           | `string`        | Mensagem de sucesso.                                            |
+| `task_id`           | `string (UUID)` | Identificador único da tarefa de classificação.                 |
+| `room_id`           | `string (UUID)` | ID da “sala” associada à tarefa (para WebSocket, se aplicável). |
+| `classifications`   | `array`         | Lista com classificações iniciais (caso disponíveis).           |
+| `partnumbers`       | `array`         | Lista dos PNs extraídos do PDF.                                 |
+| `total_partnumbers` | `integer`       | Quantidade total de Part Numbers encontrados.                   |
 
 ---
 
-### ⚠️ Em caso de erro
+### ⚠️ Erros Possíveis
 
-| Código | Causa | Exemplo de Retorno |
-|--------|--------|--------------------|
-| `400` | Nenhum arquivo enviado, nome vazio ou formato inválido | `{ "message": "Nenhum arquivo enviado." }` |
-| `500` | Erro interno no processamento do PDF | `{ "error": "Erro ao processar PDF: ..." }` |
+| Código | Causa                                                  | Exemplo de Retorno                                            |
+| ------ | ------------------------------------------------------ | ------------------------------------------------------------- |
+| `400`  | Nenhum arquivo enviado, nome vazio ou formato inválido | `{ "message": "Formato inválido, apenas PDFs são aceitos." }` |
+| `500`  | Falha no processamento, extração ou classificação      | `{ "error": "Erro interno: falha ao ler PDF." }`              |
 
 ---
 
-## 🧾 Exemplo de Requisição e Resposta
+## 🧾 Exemplo Completo
 
-### **Entrada**
-Requisição enviada via `POST /upload-pdf`:
+### **Requisição**
 
-| Campo | Tipo | Valor |
-|--------|------|--------|
-| `pedido` | Arquivo PDF | `pedido_cliente_123.pdf` |
+`POST /upload-pdf`
+Body (`multipart/form-data`):
 
-### **Saída**
+| Key          | Type | Value                    |
+| ------------ | ---- | ------------------------ |
+| `pedido`     | File | `pedido_cliente_123.pdf` |
+| `user_id`    | Text | `7`                      |
+| `reclassify` | Text | `false`                  |
+
+### **Resposta**
+
 ```json
 {
-  "message": "Arquivo processado com sucesso!",
-  "part_numbers": [
-    "PN:74HC595",
-    "PN:LM358N",
-    "12.237"
-  ],
-  "total": 3
+  "message": "PDF recebido e processado com sucesso! Partnumbers extraídos estão sendo classificados.",
+  "task_id": "e93847a5-54be-4d9d-8c87-2456dba65a56",
+  "room_id": "b0de7c3f-d729-49b0-9e4b-cab2c4c6164e",
+  "partnumbers": ["PN:74HC595", "LM358N", "12.237"],
+  "total_partnumbers": 3
 }
 ```
 
 ---
 
-## 🧩 Resumo
+## 🧩 Resumo Técnico
 
-- **Framework:** Flask + Flask-RESTful  
-- **Leitura:** Em memória
-- **Biblioteca de extração:** `pdfplumber`  
-- **Regex de busca:** identifica padrões “PN:” e códigos alfanuméricos maiores que 4 caracteres  
-- **Saída:** JSON estruturado contendo todos os PNs únicos encontrados  
+| Item                       | Descrição                                                  |
+| -------------------------- | ---------------------------------------------------------- |
+| **Framework**              | Flask + Flask-RESTful                                      |
+| **Injeção de dependência** | `dependency_injector` (`Container.classification_service`) |
+| **Extração PDF**           | `pdfplumber`                                               |
+| **Leitura de arquivo**     | Em memória (`file.read()`)                                 |
+| **Validação de schema**    | `pydantic` (`StartBatchClassificationSchema`)              |
+| **Tipo de processamento**  | Assíncrono (retorna 202 Accepted)                          |
+
+---
+
+## 💡 Dica para o Front-end
+
+Após o envio do PDF:
+
+* Use o `task_id` ou `room_id` retornado para consultar o progresso da classificação via API ou WebSocket.
+* Mostre o total de PNs encontrados e o status de “processando” até a classificação final estar disponível.
