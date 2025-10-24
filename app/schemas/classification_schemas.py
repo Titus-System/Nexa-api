@@ -13,7 +13,7 @@ class SingleClassificationRequest(BaseModel):
     manufacturer: Optional[str] = None
     supplier: Optional[str] = None
     user_id: Optional[int] = 1
-    reclassify: Optional[bool] = False
+    reclassify: Optional[bool] = True
 
 
 class StartSingleClassificationSchema(SingleClassificationRequest):
@@ -23,7 +23,7 @@ class StartSingleClassificationSchema(SingleClassificationRequest):
 class BatchClassificationRequest(BaseModel):
     partnumbers: list[str]
     user_id: Optional[int] = 1
-    reclassify: Optional[bool] = False
+    reclassify: Optional[bool] = True
 
 class StartBatchClassificationSchema(BatchClassificationRequest):
     room_id: str
@@ -49,7 +49,10 @@ class SingleClassificationResponse(BaseModel):
 
 
 class BatchClassificationResponse(BaseModel):
-    ...
+    status: TaskStatus
+    message: str
+    partnumbers: Optional[list[str]] = None
+    result: Optional[dict[str, list[SingleClassification]]] = None
 
 
 class UpdateStatusResponse(BaseModel):

@@ -133,10 +133,16 @@ class BatchClassificationTaskManager:
         }
         self.task_service.mark_as_finished(self.task_id, {"status": payload["status"], "message": payload["message"]})
         self.logger.info(f"Marked task {self.task_id} as finished.")
-        
+
         self.redis_client.publish(
             RedisChannelName.BATCH_TASK_DONE.value, 
             json.dumps(payload)
+        )
+
+        self.socket.emit(
+            EventName.BATCH_CLASSIFICATION_FINISHED.value,
+            payload,
+            to=self.room_id
         )
         return True
 

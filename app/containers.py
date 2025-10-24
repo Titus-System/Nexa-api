@@ -2,7 +2,6 @@ from dependency_injector import containers, providers
 
 from app.services.classification_service import ClassificationService
 from app.tasks.ai_classification_client import AIClassificationClient
-from app.tasks.classification_task import CeleryTaskClient
 
 
 class Container(containers.DeclarativeContainer):

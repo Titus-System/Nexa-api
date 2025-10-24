@@ -55,7 +55,7 @@ class RedisListener:
             self.logger.error("room_id ausente nos dados de resultados da tarefa.")
             return
 
-        self.logger.info(f"[INTERCEPTADO]: Resultado para a sala {room_id}. Resultado: {data.get('result')}")
+        self.logger.info(f"[INTERCEPTADO]: Resultado para a sala {room_id}. Data: {data}")
 
         payload = validate_and_get_model(data, BatchClassificationResponse)
         batch_classification_finished_event(payload, room_id)
