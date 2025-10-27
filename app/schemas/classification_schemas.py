@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Type, TypeVar
 from pydantic import BaseModel, Field, ValidationError
 from app.core.logger_config import logger
+from app.models.models import TaskStatus
 
 
 T = TypeVar('T', bound=BaseModel)
@@ -11,10 +12,21 @@ class SingleClassificationRequest(BaseModel):
     description: Optional[str] = None
     manufacturer: Optional[str] = None
     supplier: Optional[str] = None
+    user_id: Optional[int] = 1
+    reclassify: Optional[bool] = True
 
 
 class StartSingleClassificationSchema(SingleClassificationRequest):
     room_id: str = Field(..., description="O ID da sala do Socket.IO para retorno da notificação.")
+
+
+class BatchClassificationRequest(BaseModel):
+    partnumbers: list[str]
+    user_id: Optional[int] = 1
+    reclassify: Optional[bool] = True
+
+class StartBatchClassificationSchema(BatchClassificationRequest):
+    room_id: str
 
 
 class SingleClassification(BaseModel):
@@ -31,19 +43,26 @@ class SingleClassification(BaseModel):
 
 class SingleClassificationResponse(BaseModel):
     status: str
-    message: str
-    partnumber: str
+    message: Optional[str] = None
+    partnumber: Optional[str] = None
     result: SingleClassification
 
 
+class BatchClassificationResponse(BaseModel):
+    status: TaskStatus
+    message: str
+    partnumbers: Optional[list[str]] = None
+    result: Optional[dict[str, list[SingleClassification]]] = None
+
+
 class UpdateStatusResponse(BaseModel):
-    status: str
+    status: TaskStatus
     current: Optional[int]
     total: Optional[int]
     message: Optional[str]
 
 class FailedStatusResponse(BaseModel):
-    status: str
+    status: TaskStatus
     job_id: Optional[str] = None
     message: Optional[str] = None
 

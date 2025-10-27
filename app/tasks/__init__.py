@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import redis
 from app.config import settings
 from app.events.events_enum import EventName
+from app.schemas.classification_schemas import BatchClassificationResponse
 
 celery_logger = get_task_logger(__name__)
 
@@ -37,6 +38,14 @@ def emit_classification_finished(dto, room_id):
 def emit_update_status(dto: UpdateStatusDTO, room_id):
     external_socketio.emit(
         EventName.CLASSIFICATION_UPDATE_STATUS.value,
+        dto.model_dump(),
+        to=room_id
+    )
+
+def emit_batch_classification_finished_event(dto: BatchClassificationResponse, room_id:str):
+    celery_logger.info(f"[EVENTO] Enviando evento final de classificação em lote para a sala {room_id}")
+    external_socketio.emit(
+        EventName.BATCH_CLASSIFICATION_FINISHED.value,
         dto.model_dump(),
         to=room_id
     )

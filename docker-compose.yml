@@ -33,7 +33,7 @@ services:
 
   worker:
     build: .
-    command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery -A app.extensions.celery worker --loglevel=info
+    command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery -A run_celery.celery worker --loglevel=info
     env_file:
       - .env
     volumes:

@@ -11,7 +11,7 @@ Esta API permite que clientes solicitem a classificação de partnumbers de form
 
 ## 2. HTTP REST
 
-### 2.1. Iniciar Classificação
+### 2.1. Iniciar Classificação de Partnumber Único
 
 - **Endpoint:** `/classify-partnumber`
 - **Método:** `POST`
@@ -24,25 +24,231 @@ Esta API permite que clientes solicitem a classificação de partnumbers de form
   "partnumber": "PN-TEST-12345",
   "description": "[opcional] Descrição do produto",
   "manufacturer": "[opcional] Fabricante",
-  "supplier": "[opcional] Fornecedor"
+  "supplier": "[opcional] Fornecedor",
+  "reclassify": true
 }
 ```
 
 Campos:
 - `partnumber` (**obrigatório**): string
 - `description`, `manufacturer`, `supplier`: string (opcionais)
+- `reclassify`: boolean (opcional, false por padrão)
 
 #### Resposta de Sucesso (`202 Accepted`)
 
 ```json
 {
-  "message": "Seu pedido de classificação foi aceito...",
-  "task_id": "<uuid-da-tarefa>",
-  "room_id": "<uuid-da-sala>"
+  "message": "Seu pedido de classificação foi aceito e está sendo processado...",
+  "task_id": "673803c3-1993-49c5-9a5d-febdff5a6200",
+  "room_id": "231ac3f7-e31d-43c5-9213-b1919d4db6ff",
+  "classifications": [
+    {
+      "created_at": "2025-10-15T19:08:14.299905Z",
+      "updated_at": null,
+      "id": 1,
+      "partnumber_id": 1,
+      "classification_task_id": "fa3c27cb-7148-49c7-ae94-42e459ce9fb9",
+      "tipi_id": null,
+      "manufacturer_id": null,
+      "created_by_user_id": 1,
+      "short_description": "Short Description",
+      "long_description": "Long and complete description.",
+      "status": "ACTIVE",
+      "confidence_rate": 0.98
+    }
+  ]
+}
+```
+
+### 2.2. Iniciar classificação de Lista de Partnumbers
+- **Endpoint:** `/classify-batch`
+- **Método:** `POST`
+- **Content-Type:** `application/json`
+
+#### Corpo da requisição
+```json
+{
+  "partnumbers": ["PN-TEST-12345",],
+  "user_id": "[OPCIONAL] <id do usuário>",
+  "reclassify": false
+}
+```
+Campos:
+- `partnumbers` (**obrigatório**): list[string]
+- `user_id`: string (opcional)
+- `reclassify`: boolean (opcional, false por padrão)
+
+#### Resposta de Sucesso (`202 Accepted`)
+```json
+{
+  "message": "Seu pedido de classificação em lote foi recebido e está sendo processado.",
+  "task_id": "a0766941-9df2-478c-ab8a-1bf008dd5292",
+  "room_id": "59a4703f-9b89-4a66-9f03-6600f411ea99",
+  "classifications": {
+    "PN-TEST-12345": [
+      {...}
+    ]
+  }
+}
+```
+- Sendo que o campo `classifications` lista as classificações já existentes para cada partnumber da requisição.
+
+
+### 2.2. Buscar Task
+
+- **Endpoint:** `/tasks`
+- **Método:** `GET`
+
+#### Query String Parameters
+| Parâmetro          | Tipo   | Obrigatório | Descrição                                            |
+| ------------------ | ------ | ----------- | ---------------------------------------------------- |
+| `task_id`          | string | Não         | ID da tarefa específica.                             |
+| `job_id`           | string | Não         | ID do job ao qual a tarefa pertence.                 |
+| `progress_channel` | string | Não         | Canal de progresso associado à tarefa.               |
+| `status`           | string | Não         | Status da tarefa (ex: `running`, `done`, `pending`). |
+| `user_id`          | string | Não         | ID do usuário responsável pela tarefa.               |
+
+> Todos os parâmetros são opcionais, mas você pode combinar múltiplos filtros em uma única requisição.
+
+
+#### **Exemplos de Requisição**
+
+1️⃣ Buscar tarefa por `task_id`:
+
+```
+GET /tasks?task_id=123
+```
+
+2️⃣ Buscar tarefas de um usuário específico com status `running`:
+
+```
+GET /tasks?user_id=10&status=running
+```
+
+3️⃣ Buscar tarefas por `job_id` e `progress_channel`:
+
+```
+GET /tasks?job_id=456&progress_channel=room_abc
+```
+
+---
+
+#### **Resposta**
+
+* **Status:** 200 OK
+* **Formato:** JSON
+
+```json
+{
+  "tasks": [
+    {
+      "task_id": "1",
+      "job_id": "456",
+      "user_id": "10",
+      "status": "running",
+      "progress_channel": "room_abc",
+      "created_at": "2025-10-15T12:00:00",
+      "updated_at": "2025-10-15T12:10:00"
+    },
+    {
+      "task_id": "2",
+      "job_id": "456",
+      "user_id": "10",
+      "status": "running",
+      "progress_channel": "room_xyz",
+      "created_at": "2025-10-15T12:05:00",
+      "updated_at": "2025-10-15T12:15:00"
+    }
+  ]
 }
 ```
 
 ---
+
+
+### 2.3. Listar Partnumbers com classificações
+- **Endpoint:** `/partnumbers`
+- **Método:** `GET`
+
+#### **Resposta**
+
+* **Status:** 200 OK
+* **Formato:** JSON
+
+```json
+[
+  {
+    "created_at": "2025-10-15T22:43:33.082578Z",
+    "updated_at": null,
+    "id": 1,
+    "code": "PNTEST12345",
+    "best_classification_id": null,
+    "classifications": [
+      {
+        "created_at": "2025-10-15T22:43:37.119387Z",
+        "updated_at": null,
+        "id": 1,
+        "partnumber_id": 1,
+        "classification_task_id": "f7cb936a-b5f2-4ac0-aeff-20008beb0b4f",
+        "tipi_id": null,
+        "manufacturer_id": null,
+        "created_by_user_id": 1,
+        "short_description": "Short Description",
+        "long_description": "Long and complete description.",
+        "status": "ACTIVE",
+        "confidence_rate": 0.98
+      }
+    ],
+    "best_classification": null
+  },
+  {
+    "created_at": "2025-10-15T22:43:38.584931Z",
+    "updated_at": null,
+    "id": 2,
+    "code": "PNUMBERTEST12345",
+    "best_classification_id": null,
+    "classifications": [],
+    "best_classification": null
+  }
+]
+```
+
+#### 2.4. Buscar Partnumber
+- **Endpoint:** `/partnumbers/<partnumber_code>`
+- **Método:** `GET`
+
+```
+GET /partnumbers/PNTEST12345
+```
+
+#### **Resposta**
+```json
+{
+  "created_at": "2025-10-15T22:43:33.082578Z",
+  "updated_at": null,
+  "id": 1,
+  "code": "PNTEST12345",
+  "best_classification_id": null,
+  "classifications": [
+    {
+      "created_at": "2025-10-15T22:43:37.119387Z",
+      "updated_at": null,
+      "id": 1,
+      "partnumber_id": 1,
+      "classification_task_id": "f7cb936a-b5f2-4ac0-aeff-20008beb0b4f",
+      "tipi_id": null,
+      "manufacturer_id": null,
+      "created_by_user_id": 1,
+      "short_description": "Short Description",
+      "long_description": "Long and complete description.",
+      "status": "ACTIVE",
+      "confidence_rate": 0.98
+    }
+  ],
+  "best_classification": null
+}
+```
+
 
 ## 3. WebSocket (Socket.IO)
 

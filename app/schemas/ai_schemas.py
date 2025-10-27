@@ -8,3 +8,9 @@ class AISingleClassificationRequest(BaseModel):
     description: Optional[str] = None
     manufacturer: Optional[str] = None
     supplier: Optional[str] = None
+
+
+class AIBatchClassificationRequest(BaseModel):
+    progress_channel: str
+    partnumbers: list[str]
+    

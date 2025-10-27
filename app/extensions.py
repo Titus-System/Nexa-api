@@ -16,7 +16,6 @@ socketio = SocketIO(
 )
 
 celery = Celery(
-    "myapp",
     backend=settings.REDIS_URL,
     broker=settings.REDIS_URL
 )
