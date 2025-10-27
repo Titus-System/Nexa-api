@@ -4,8 +4,8 @@ import uuid
 import requests
 from app.events.events_enum import EventName, RedisChannelName
 from app.models.models import TaskStatus
-from app.schemas.ai_schemas import AIBatchClassificationRequest, AISingleClassificationRequest
-from app.schemas.classification_schemas import FailedStatusResponse, SingleClassification, SingleClassificationResponse, UpdateStatusResponse, validate_and_get_model
+from app.schemas.ai_schemas import AIBatchClassificationRequest
+from app.schemas.classification_schemas import FailedStatusResponse, SingleClassification, UpdateStatusResponse, validate_and_get_model
 from app.services.classification_table_service import ClassificationService
 from app.services.classification_tasks_service import ClassificationTaskService
 from app.services.manufacturers_service import ManufacturersService
@@ -40,6 +40,7 @@ class BatchClassificationTaskManager:
     def run(self):
         self.logger.info(f"\n[INICIANDO] Iniciando processamento em lote...\n")
         self._create_task_in_db()
+        pubsub = None
         try:
             pubsub = self.redis_client.pubsub(ignore_subscribe_messages=True)
             pubsub.subscribe(self.progress_channel)
@@ -54,7 +55,8 @@ class BatchClassificationTaskManager:
             self._listen_for_progress(pubsub)
 
         finally:
-            if pubsub: 
+            if pubsub:
+                self.logger.info(f"Desinscrevendo worker do canal {self.progress_channel} do Redis")
                 pubsub.unsubscribe(self.progress_channel)
 
     def _create_task_in_db(self):
@@ -62,7 +64,7 @@ class BatchClassificationTaskManager:
             self.task_id,
             self.room_id,
             self.progress_channel,
-            user_id=self.user_id
+            user_id=int(self.user_id)
         )
         for partnumber in self.partnumbers:
             self.partnumber_service.create(partnumber)
@@ -83,11 +85,11 @@ class BatchClassificationTaskManager:
             self.logger.info(f"Iniciado job de processamento externo com ID: {job_id}")
             return job_id
         except requests.RequestException as e:
-            self.logger.error("Falha ao iniciar job em Nexa AI")
+            self.logger.error(f"Falha ao iniciar job em Nexa AI: {str(e)}")
             error_payload = FailedStatusResponse(
-                status=TaskStatus.FAILED.value,
+                status=TaskStatus.FAILED,
                 message="Erro inesperado em Nexa AI ao iniciar processamento do partnumber."
-            )
+            ).model_dump()
             self.task_service.mark_as_failed(self.task_id, "Erro ao iniciar job em Nexa AI.")
             self.socket.emit(
                 EventName.CLASSIFICATION_UPDATE_STATUS.value,
@@ -122,6 +124,7 @@ class BatchClassificationTaskManager:
         elif status == "failed":
             self._handle_failed_status(data)
             return False
+        return None
 
     def _handle_done_status(self, data):
         payload = {
@@ -129,21 +132,21 @@ class BatchClassificationTaskManager:
             "message": "Processamento de múltiplos partnumbers concluído com sucesso.",
             "result": data.get("result", {}),
             "partnumbers": self.partnumbers,
-            "room_id": self.room_id
+            "room_id": self.room_id,
+            "task_id": self.task_id
         }
         self.task_service.mark_as_finished(self.task_id, {"status": payload["status"], "message": payload["message"]})
         self.logger.info(f"Marked task {self.task_id} as finished.")
 
-        self.redis_client.publish(
-            RedisChannelName.BATCH_TASK_DONE.value, 
-            json.dumps(payload)
-        )
-
-        self.socket.emit(
-            EventName.BATCH_CLASSIFICATION_FINISHED.value,
-            payload,
-            to=self.room_id
-        )
+        import time
+        try:
+            self.logger.info("[TIRA_TEIMA] Antes do emit final.")
+            self.socket.emit(EventName.BATCH_CLASSIFICATION_FINISHED.value, payload, to=self.room_id)
+            self.logger.info(f"[TIRA_TEIMA] Depois do emit final: {payload}")
+        except Exception as e:
+            self.logger.exception(f"Erro ao emitir evento final: {e}")
+        finally:
+            time.sleep(1)
         return True
 
     def _handle_partial_result(self, data:dict):
@@ -161,16 +164,17 @@ class BatchClassificationTaskManager:
         single_classification = data.get("single_classification")
         if not single_classification:
             self.logger.error("Erro ao processar resultado parcial. Resultado de single_classification não encontrado.")
-            return
+            return None
 
         single_classification = validate_and_get_model(single_classification, SingleClassification)
 
         tipi = self.tipi_service.find_from_ncm_ex(single_classification.ncm, single_classification.exception)
-        try:
-            manufacturer = self.manufaturer_service.find_or_create(single_classification.fabricante, single_classification.endereco, single_classification.pais)
-        except Exception as e:
-            self.logger.info(f"Erro ao lidar com fabricante {single_classification.fabricante}: {e}")
-            manufacturer = None
+
+        manufacturer = self.manufaturer_service.find_or_create(
+            single_classification.fabricante,
+            single_classification.endereco,
+            single_classification.pais
+        )
 
         create_classification_dto = {
             "partnumber": single_classification.partnumber,

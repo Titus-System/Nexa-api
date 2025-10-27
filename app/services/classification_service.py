@@ -31,7 +31,6 @@ class ClassificationService(IClassificationService):
 
     def start_batch_classification(self, schema: StartBatchClassificationSchema) -> dict:
         self.logger.info(f"Serviço para classificação de partnumbers: {schema.partnumbers}")
-        task_id = None
         existing_classifications = {}
         for p in schema.partnumbers:
             cl = self.partnumber_service.get_classifications(partnumber=p)
@@ -39,18 +38,7 @@ class ClassificationService(IClassificationService):
                 cl = [ClassificationSchema.model_validate(c).model_dump(mode="json") for c in cl]
                 existing_classifications[p] = cl
 
-        send_for_classification = []
-        if not schema.reclassify:
-            for p in schema.partnumbers:
-                if p not in existing_classifications.keys():
-                    send_for_classification.append(p)
-        else:
-            send_for_classification = schema.partnumbers
-            
-        self.logger.info(f"Partnumbers para enviar à classificação de IA: {send_for_classification}")
-        if send_for_classification:
-            schema.partnumbers = send_for_classification
-            task_id = self.task_client.run_batch_classification_task(schema)
+        task_id = self.task_client.run_batch_classification_task(schema)
         
         return {
             "message": "Seu pedido de classificação em lote foi recebido e está sendo processado.",

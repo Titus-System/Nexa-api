@@ -83,9 +83,9 @@ class SingleClassificationTaskManager:
         except requests.RequestException as e:
             self.logger.error("Falha ao iniciar job em Nexa AI")
             error_payload = FailedStatusResponse(
-                status=TaskStatus.FAILED.value,
+                status=TaskStatus.FAILED,
                 message="Erro inesperado em Nexa AI ao iniciar processamento do partnumber."
-            )
+            ).model_dump()
             self.task_service.mark_as_failed(self.task_id, "Erro ao iniciar job em Nexa AI.")
             self.socket.emit(
                 EventName.CLASSIFICATION_UPDATE_STATUS.value,
@@ -172,12 +172,7 @@ class SingleClassificationTaskManager:
             progress_payload,
             to=self.room_id
         )
-        self.redis_client.publish(
-            'task_progress', 
-            json.dumps(progress_payload)
-        )
-        return False
-    
+
     def _handle_failed_status(self, data):
         fail_payload = {
             "status": TaskStatus.FAILED.value,
