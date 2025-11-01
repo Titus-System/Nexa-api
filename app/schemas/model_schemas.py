@@ -104,10 +104,16 @@ class TipiDTO(DTO):
     
 
 class NcmSchema(DTO):
+    class LocalTipiDTO(DTO):
+        id: int
+        ex: str
+        description:Optional[str] = None
+        tax: float
+        
     id: int
     code: str
     description: Optional[str] = None
-    tipi_rules: Optional[list[TipiSchema]]
+    tipi_rules: Optional[list[LocalTipiDTO]]
 
 
 class NcmDTO(DTO):

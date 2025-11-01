@@ -7,6 +7,8 @@ import uuid
 from app.containers import Container
 from app.core.logger_config import logger
 from app.schemas.classification_schemas import BatchClassificationRequest, SingleClassificationRequest, StartBatchClassificationSchema, StartSingleClassificationSchema
+from app.schemas.model_schemas import ClassificationTaskSchema
+from app.services.classification_table_service import ClassificationService
 from app.services.protocols import IClassificationService
 
 
@@ -40,7 +42,7 @@ class BatchClassificationResource(Resource):
         }, 202
 
 
-class PartnumberClassification(Resource):
+class SingleClassification(Resource):
     @inject
     def __init__(
         self, 
@@ -70,3 +72,26 @@ class PartnumberClassification(Resource):
             "room_id": room_id,
             "classifications": response.get("classifications", [])
         }, 202
+    
+
+class ClassificationResource(Resource):
+    def __init__(self):
+        self.service = ClassificationService()
+        self.logger = logger
+
+    def get(self):
+        filters = {
+            "classification_id": request.args.get("classification_id"),
+            "job_id": request.args.get("job_id"),
+            "progress_channel": request.args.get("progress_channel"),
+            "status": request.args.get("status"),
+            "user_id": request.args.get("user_id")
+        }
+        filters = {k:v for k, v in filters.items() if v is not None}
+        tasks = self.filter_tasks(filters)
+        return {"tasks": tasks}, 200
+    
+    def filter_tasks(self, filters: dict):
+        tasks = self.service.get_classifications(filters)
+        tasks = [ClassificationTaskSchema.model_validate(task).to_dict() for task in tasks]
+        return tasks
