@@ -1,25 +1,18 @@
 from flask import request
 from flask_restful import Resource
 from pydantic import ValidationError
-from dependency_injector.wiring import inject, Provide
 import uuid
 
-from app.containers import Container
 from app.core.logger_config import logger
 from app.schemas.classification_schemas import BatchClassificationRequest, SingleClassificationRequest, StartBatchClassificationSchema, StartSingleClassificationSchema
 from app.schemas.model_schemas import ClassificationTaskSchema
+from app.services.classification_service import PartnumberClassificationService
 from app.services.classification_table_service import ClassificationService
-from app.services.protocols import IClassificationService
 
 
 class BatchClassificationResource(Resource):
-    @inject
-    def __init__(
-        self, 
-        service: IClassificationService = Provide[Container.classification_service],
-    ):
-        self.service = service
-        super().__init__()
+    def __init__(self):
+        self.service = PartnumberClassificationService()
 
     def post(self):
         try:
@@ -42,14 +35,9 @@ class BatchClassificationResource(Resource):
         }, 202
 
 
-class SingleClassification(Resource):
-    @inject
-    def __init__(
-        self, 
-        service: IClassificationService = Provide[Container.classification_service],
-    ):
-        self.service = service
-        super().__init__()
+class SingleClassificationResource(Resource):
+    def __init__(self):
+        self.service = PartnumberClassificationService()
 
 
     def post(self):

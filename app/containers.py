@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 
-from app.services.classification_service import ClassificationService
+from app.services.classification_service import PartnumberClassificationService
 from app.tasks.ai_classification_client import AIClassificationClient
 
 
@@ -12,6 +12,5 @@ class Container(containers.DeclarativeContainer):
     celery_client = providers.Singleton(AIClassificationClient)
 
     classification_service = providers.Singleton(
-        ClassificationService,
-        task_client=celery_client,
+        PartnumberClassificationService
     )

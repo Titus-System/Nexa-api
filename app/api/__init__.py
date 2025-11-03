@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restful import Api
 
-from app.api.classification_resource import BatchClassificationResource, SingleClassification
+from app.api.classification_resource import BatchClassificationResource, SingleClassificationResource
 from app.api.export_excel_resource import ExporExcelResource
 from app.api.health_check import CheckWebSocketConnection, HealthCheck
 from app.api.ncm_resource import NcmResource
@@ -16,7 +16,7 @@ def initialize_api(app: Flask) -> Api:
     
     api.add_resource(HealthCheck, "/")
     api.add_resource(CheckWebSocketConnection, "/ws")
-    api.add_resource(SingleClassification, "/classify-partnumber")
+    api.add_resource(SingleClassificationResource, "/classify-partnumber")
     api.add_resource(TaskResource, "/tasks")
     api.add_resource(PartnumberResource, "/partnumbers", "/partnumbers/<string:partnumber>")
     api.add_resource(NcmResource, "/ncm", "/ncm/<string:ncm_code>")

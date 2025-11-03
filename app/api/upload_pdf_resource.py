@@ -1,27 +1,20 @@
-from app.containers import Container
 from flask import request
 from flask_restful import Resource
 from app.schemas.classification_schemas import StartBatchClassificationSchema
+from app.services.classification_service import PartnumberClassificationService
 from app.services.pdfExtrator import extract_part_numbers
 from app.core.logger_config import logger
 
 from flask import request
 from flask_restful import Resource
-from dependency_injector.wiring import inject, Provide
 import uuid
 
-from app.services.protocols import IClassificationService
 
 
 class UploadPedidoResource(Resource):
-    @inject
-    def __init__(
-        self, 
-        service: IClassificationService = Provide[Container.classification_service],
-    ):
-        self.service = service
+    def __init__(self):
+        self.service = PartnumberClassificationService()
         self.logger = logger
-        super().__init__()
 
 
     def post(self):

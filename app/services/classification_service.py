@@ -2,12 +2,12 @@ from app.schemas.model_schemas import ClassificationSchema
 from app.services.partnumber_service import PartnumberService
 from app.services.protocols import IClassificationService
 from app.schemas.classification_schemas import StartBatchClassificationSchema, StartSingleClassificationSchema
-from app.services.protocols import IAsyncTaskClient
 from app.core.logger_config import logger
+from app.tasks.ai_classification_client import AIClassificationClient
 
-class ClassificationService(IClassificationService):
-    def __init__(self, task_client:IAsyncTaskClient):
-        self.task_client = task_client
+class PartnumberClassificationService(IClassificationService):
+    def __init__(self):
+        self.task_client = AIClassificationClient()
         self.logger = logger
         self.partnumber_service = PartnumberService()
 
