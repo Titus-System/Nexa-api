@@ -1,8 +1,10 @@
+import io
+import pdfplumber
 from flask import request
 from flask_restful import Resource
 from app.schemas.classification_schemas import StartBatchClassificationSchema
 from app.services.classification_service import PartnumberClassificationService
-from app.services.pdfExtrator import extract_part_numbers
+from app.services.pdfExtrator import PdfParserFactory
 from app.core.logger_config import logger
 
 from flask import request
@@ -31,7 +33,10 @@ class UploadPedidoResource(Resource):
 
         try:
             pdf_bytes = file.read()
-            part_numbers = extract_part_numbers(pdf_bytes)
+            pdf_file = pdfplumber.open(io.BytesIO(pdf_bytes))
+
+            extractor = PdfParserFactory(pdf_file)
+            part_numbers = extractor.extract_partnumbers()
 
             room_id = str(uuid.uuid4())
 
