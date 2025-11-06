@@ -4,7 +4,7 @@ from pdfplumber.page import Page
 import re
 
 from app.core.logger_config import logger
-from .protocols import PartnumberPdfInfo, PdfParser
+from .protocols import PartnumberInfo, PdfParser
 
 
 class XWorkInvoiceParser(PdfParser):
@@ -20,7 +20,7 @@ class XWorkInvoiceParser(PdfParser):
         self.logger = logger
         
 
-    def extract_partnumbers(self) -> Dict[str, PartnumberPdfInfo]:
+    def extract_partnumbers(self) -> Dict[str, PartnumberInfo]:
         """Retorna todos os part numbers extraídos do PDF."""
         try:
             partnumbers = self._find_matches()
@@ -31,10 +31,10 @@ class XWorkInvoiceParser(PdfParser):
             return {}
 
 
-    def _parse_match(self, match: re.Match) -> PartnumberPdfInfo:
+    def _parse_match(self, match: re.Match) -> PartnumberInfo:
         """Extrai os dados de um 'match' regex em formato estruturado."""
         pn, descr, mfr, coo = match.groups()
-        return PartnumberPdfInfo(
+        return PartnumberInfo(
             partnumber=pn.strip(),
             erp_description=' '.join(descr.strip().split()).replace("- ", "-"),
             manufacturer=mfr.strip(),
@@ -51,7 +51,7 @@ class XWorkInvoiceParser(PdfParser):
             return []
 
 
-    def _process_block(self, text_block: str, all_items: Dict[str, PartnumberPdfInfo]) -> None:
+    def _process_block(self, text_block: str, all_items: Dict[str, PartnumberInfo]) -> None:
         """Tenta processar e adicionar um bloco de texto ao dicionário de itens."""
         try:
             match = self.pattern.search(text_block)
@@ -62,9 +62,9 @@ class XWorkInvoiceParser(PdfParser):
             self.logger.warning(f"Erro ao processar bloco de texto: {e}")
 
 
-    def _find_matches(self) -> Dict[str, PartnumberPdfInfo]:
+    def _find_matches(self) -> Dict[str, PartnumberInfo]:
         """Percorre o PDF, extrai e processa blocos de texto válidos."""
-        all_items: Dict[str, PartnumberPdfInfo] = {}
+        all_items: Dict[str, PartnumberInfo] = {}
         current_block: Optional[str] = None
 
         total_pages = len(self.pdf_file.pages)
@@ -85,7 +85,7 @@ class XWorkInvoiceParser(PdfParser):
         self,
         page: Page,
         current_block: Optional[str],
-        all_items: Dict[str, PartnumberPdfInfo]
+        all_items: Dict[str, PartnumberInfo]
     ) -> Optional[str]:
         """Processa uma página do PDF e retorna o último bloco aberto."""
         tables = self._safe_extract_tables(page)
@@ -103,7 +103,7 @@ class XWorkInvoiceParser(PdfParser):
         self,
         table: list,
         current_block: Optional[str],
-        all_items: Dict[str, PartnumberPdfInfo]
+        all_items: Dict[str, PartnumberInfo]
     ) -> Optional[str]:
         """Processa uma tabela do PDF linha a linha."""
         for row in table:

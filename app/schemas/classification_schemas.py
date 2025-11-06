@@ -1,7 +1,8 @@
-from typing import Dict, Optional, Type, TypeVar
+from typing import Any, Dict, Optional, Type, TypeVar
 from pydantic import BaseModel, Field, ValidationError
 from app.core.logger_config import logger
 from app.models.models import TaskStatus
+from app.pdf_parsers.protocols import PartnumberInfo
 
 
 T = TypeVar('T', bound=BaseModel)
@@ -26,6 +27,7 @@ class BatchClassificationRequest(BaseModel):
     reclassify: Optional[bool] = True
 
 class StartBatchClassificationSchema(BatchClassificationRequest):
+    partnumbers: Dict[str, PartnumberInfo]
     room_id: str
 
 
@@ -67,7 +69,7 @@ class FailedStatusResponse(BaseModel):
     message: Optional[str] = None
 
 
-def validate_and_get_model(data_to_validate: Dict[str, any], model:Type[T]) -> Optional[T]:
+def validate_and_get_model(data_to_validate: Dict[str, Any], model:Type[T]) -> Optional[T]:
     """
     Valida um dicionário contra um modelo Pydantic.
     Retorna o dicionário validado em caso de sucesso, ou None em caso de erro.

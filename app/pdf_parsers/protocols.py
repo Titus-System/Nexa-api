@@ -2,7 +2,7 @@ from typing import Optional, Protocol
 
 from pydantic import BaseModel
 
-class PartnumberPdfInfo(BaseModel):
+class PartnumberInfo(BaseModel):
     partnumber: str
     erp_description: Optional[str] = None
     ncm: Optional[str] = None
@@ -11,5 +11,5 @@ class PartnumberPdfInfo(BaseModel):
 
 
 class PdfParser(Protocol):
-    def extract_partnumbers(self) -> dict[str, PartnumberPdfInfo]:
+    def extract_partnumbers(self) -> dict[str, PartnumberInfo]:
         ...

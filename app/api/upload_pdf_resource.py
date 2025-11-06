@@ -25,7 +25,7 @@ class UploadPedidoResource(Resource):
 
         file = request.files["pedido"]
 
-        if file.filename == "":
+        if file.filename == "" or file.filename is None:
             return {"message": "Arquivo sem nome."}, 400
 
         if not file.filename.lower().endswith(".pdf"):
@@ -56,7 +56,7 @@ class UploadPedidoResource(Resource):
                 "task_id": response.get("task_id"),
                 "room_id": room_id,
                 "classifications": response.get("classifications", []),
-                "partnumbers": part_numbers,
+                "partnumbers": [i for i in part_numbers.keys()],
                 "total_partnumbers": len(part_numbers)
             }, 202
 

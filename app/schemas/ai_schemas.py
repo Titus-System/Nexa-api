@@ -1,5 +1,7 @@
-from typing import Optional
+from typing import Dict, Optional
 from pydantic import BaseModel
+
+from app.pdf_parsers.protocols import PartnumberInfo
 
 
 class AISingleClassificationRequest(BaseModel):
@@ -12,5 +14,5 @@ class AISingleClassificationRequest(BaseModel):
 
 class AIBatchClassificationRequest(BaseModel):
     progress_channel: str
-    partnumbers: list[str]
+    partnumbers: Dict[str, PartnumberInfo]
     

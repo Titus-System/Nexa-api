@@ -3,7 +3,7 @@ from pdfplumber.pdf import PDF
 import pandas as pd
 import re
 
-from .protocols import PartnumberPdfInfo, PdfParser
+from .protocols import PartnumberInfo, PdfParser
 
 
 class MouserInvoiceParser(PdfParser):
@@ -24,7 +24,7 @@ class MouserInvoiceParser(PdfParser):
         ]
     
 
-    def extract_partnumbers(self) -> Dict[str, PartnumberPdfInfo]:
+    def extract_partnumbers(self) -> Dict[str, PartnumberInfo]:
         try:
             partnumbers = {}
             product_data = self.create_dataframe()
@@ -32,7 +32,7 @@ class MouserInvoiceParser(PdfParser):
                 match = self.regex.search(line)
                 if match:
                     pn = match.group('pn').strip()
-                    partnumbers[pn] = PartnumberPdfInfo(
+                    partnumbers[pn] = PartnumberInfo(
                         partnumber=pn,
                         erp_description=match.group('desc_erp').strip(),
                         manufacturer=match.group('manufacturer').strip(),
