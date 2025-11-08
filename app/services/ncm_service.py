@@ -20,3 +20,16 @@ class NcmService:
         stmt = select(Ncm)
         result = self.db_session.execute(stmt).scalars().all()
         return result
+    
+    def create(self, ncm_code: str) -> Ncm | None:
+        existing = self.get_by_code(ncm_code)
+        if existing is not None:
+            return existing
+
+        register = Ncm(code=ncm_code)
+        self.db_session.add(register)
+        self.db_session.commit()
+        self.db_session.refresh(register)
+        return register
+    
+    

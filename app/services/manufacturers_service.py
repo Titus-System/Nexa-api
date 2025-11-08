@@ -1,4 +1,4 @@
-from sqlalchemy import and_
+from sqlalchemy import and_, select
 from app.extensions import db
 from app.models.models import Manufacturer
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,6 +31,10 @@ class ManufacturersService:
             self.db_session.rollback()
             self.logger.info(f"Erro ao inserir fabricante no banco de dados: {e}")
 
+
+    def get_by_id(self, id):
+        stmt = select(Manufacturer).where(Manufacturer.id == id)
+        return self.db_session.execute(stmt).scalar_one_or_none()
 
     def find_or_create(self, name: str, address: str = None, country: str = None) -> Manufacturer | None:
         """
@@ -95,7 +99,8 @@ class ManufacturersService:
                 "country": country_norm
             }
             new_manufacturer = self.create(dto)
-
+            self.db_session.commit()
+            self.db_session.refresh(new_manufacturer)
             return new_manufacturer
         except Exception as e:
             self.logger.info(f"Erro ao buscar fabricante {name} no banco de dados: {e}")

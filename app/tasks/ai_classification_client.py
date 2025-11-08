@@ -27,5 +27,6 @@ def ai_single_classification_task(self: Task, task_data:dict):
 
 @celery.task(bind=True)
 def ai_batch_classification_task(self:Task, task_data:dict):
+    task_data = StartBatchClassificationSchema(**task_data)
     classification_manager = BatchClassificationTaskManager(task_id=self.request.id, task_data=task_data)
     return classification_manager.run()

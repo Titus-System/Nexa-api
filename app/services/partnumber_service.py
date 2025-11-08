@@ -8,16 +8,23 @@ class PartnumberService:
         self.db_session = db.session
         self.logger = logger
 
-    def create(self, partnumber:str):
+    def create(self, partnumber: str) -> Partnumber:
         partnumber = partnumber.strip().upper()
-        stmt = self.db_session.query(Partnumber).filter(Partnumber.code == partnumber)
-        existing_partnumber = stmt.first()
-        if existing_partnumber:
+        existing = (
+            self.db_session.query(Partnumber)
+            .filter(Partnumber.code == partnumber)
+            .first()
+        )
+        if existing:
             self.logger.info(f"Partnumber já existe: {partnumber}")
-            return existing_partnumber
-        else:
-            self.logger.info(f"Criando novo partnumber: {partnumber}")
-            self.db_session.add(Partnumber(code = partnumber))
+            return existing
+
+        self.logger.info(f"Criando novo partnumber: {partnumber}")
+        new_part = Partnumber(code=partnumber)
+        self.db_session.add(new_part)
+        self.db_session.commit()
+        self.db_session.refresh(new_part)
+        return new_part
 
     def get_classifications(self, partnumber: str) -> list[dict]:
         partnumber = partnumber.strip().upper()

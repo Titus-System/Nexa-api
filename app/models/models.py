@@ -172,6 +172,7 @@ class Classification(db.Model, TimeStampMixin):
     
     short_description = Column(String(256))
     long_description = Column(Text)
+    country_code = Column(String(255))
     status = Column(Enum(ClassificationStatus, name="classification_status"), default=ClassificationStatus.ACTIVE)
     confidence_rate = Column(Numeric(4, 3))
 

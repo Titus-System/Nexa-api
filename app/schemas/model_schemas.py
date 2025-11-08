@@ -39,6 +39,7 @@ class ClassificationSchema(DTO):
     created_by_user_id: int
     short_description: Optional[str] = None
     long_description: Optional[str] = None
+    country_code: Optional[str] = None
     status: Optional[ClassificationStatus] = None
     confidence_rate: Optional[float]
     manufacturer: Optional[ManufacturerDTO] = None

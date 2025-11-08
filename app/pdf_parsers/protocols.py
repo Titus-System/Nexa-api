@@ -8,6 +8,7 @@ class PartnumberInfo(BaseModel):
     ncm: Optional[str] = None
     manufacturer: Optional[str] = None
     coo: Optional[str] = None
+    address: Optional[str] = None
 
 
 class PdfParser(Protocol):

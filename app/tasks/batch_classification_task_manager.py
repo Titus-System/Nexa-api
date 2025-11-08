@@ -1,28 +1,30 @@
-import json
 from typing import Dict
 import uuid
 import requests
-from app.events.events_enum import EventName, RedisChannelName
+from app.events.events_enum import EventName
 from app.models.models import TaskStatus
+from app.pdf_parsers.protocols import PartnumberInfo
 from app.schemas.ai_schemas import AIBatchClassificationRequest
-from app.schemas.classification_schemas import FailedStatusResponse, SingleClassification, UpdateStatusResponse, validate_and_get_model
+from app.schemas.classification_schemas import FailedStatusResponse, StartBatchClassificationSchema
 from app.services.classification_table_service import ClassificationService
 from app.services.classification_tasks_service import ClassificationTaskService
 from app.services.manufacturers_service import ManufacturersService
+from app.services.ncm_service import NcmService
 from app.services.partnumber_service import PartnumberService
 from app.services.tipi_service import TipiService
+from app.tasks.progress_listener import ProgressListener
 from . import external_socketio, celery_logger, redis_client
 from app.config import settings
 
 
 class BatchClassificationTaskManager:
-    def __init__(self, task_id:str, task_data:Dict):
+    def __init__(self, task_id:str, task_data:StartBatchClassificationSchema):
         self.task_id = task_id
         self.task_data = task_data
 
-        self.room_id:str = self.task_data.pop("room_id")
-        self.user_id: str = self.task_data.get("user_id")
-        self.partnumbers:list[str] = self.task_data.get("partnumbers")
+        self.room_id = self.task_data.room_id
+        self.user_id = self.task_data.user_id or 1
+        self.partnumbers = self.task_data.partnumbers
 
         self.progress_channel = f"progress-{uuid.uuid4()}"
 
@@ -35,6 +37,7 @@ class BatchClassificationTaskManager:
         self.partnumber_service = PartnumberService()
         self.tipi_service = TipiService()
         self.manufaturer_service = ManufacturersService()
+        self.ncm_service = NcmService()
 
     
     def run(self):
@@ -42,37 +45,60 @@ class BatchClassificationTaskManager:
         self._create_task_in_db()
         pubsub = None
         try:
-            pubsub = self.redis_client.pubsub(ignore_subscribe_messages=True)
-            pubsub.subscribe(self.progress_channel)
-
             job_id = self._initiate_remote_job()
             if not job_id:
-                pubsub.unsubscribe(self.progress_channel)
                 self.task_service.mark_as_failed(self.task_id, "Falha ao iniciar o job de classificação em Nexa IA.")
                 return
             
+            pubsub = self.redis_client.pubsub(ignore_subscribe_messages=True)
+            pubsub.subscribe(self.progress_channel)
+
             self.task_service.update(self.task_id, {"job_id":job_id})
-            self._listen_for_progress(pubsub)
+            ProgressListener(
+                pubsub, self.task_id, self.room_id, [i for i in self.partnumbers.keys()], self.user_id
+            ).listen_for_progress()
 
         finally:
             if pubsub:
                 self.logger.info(f"Desinscrevendo worker do canal {self.progress_channel} do Redis")
                 pubsub.unsubscribe(self.progress_channel)
 
+
     def _create_task_in_db(self):
         self.task_service.create(
             self.task_id,
             self.room_id,
             self.progress_channel,
-            user_id=int(self.user_id)
+            user_id=self.user_id
         )
-        for partnumber in self.partnumbers:
+        for partnumber, info in self.partnumbers.items():
+            self.logger.info(f"Iniciando o registro de classificação prévia: {info}")
             self.partnumber_service.create(partnumber)
+            mnf = None
+            ncm = None
+            tipi = None
+            if info.manufacturer:
+                mnf = self.manufaturer_service.find_or_create(info.manufacturer)
+            if info.ncm:
+                ncm = self.ncm_service.create(info.ncm)
+                tipi = self.tipi_service.create({"ncm_code":ncm.code})
+
+            self.classification_service.create({
+                "partnumber": info.partnumber,
+                "classification_task_id": self.task_id,
+                "manufacturer_id": mnf.id if mnf else None,
+                "short_description": info.erp_description,
+                "confidence_rate": 0.98,
+                "user_id": self.user_id,
+                "tipi_id": tipi.id if tipi else None,
+                "country_code": info.coo
+            })
+
 
     def _initiate_remote_job(self):
         request_data = AIBatchClassificationRequest(
-            **self.task_data,
-            progress_channel=self.progress_channel
+            partnumbers = self.partnumbers,
+            progress_channel = self.progress_channel
         )
         try:
             response = requests.post(
@@ -96,148 +122,3 @@ class BatchClassificationTaskManager:
                 error_payload,
                 to=self.room_id
             )
-
-    def _listen_for_progress(self, pubsub):
-        for message in pubsub.listen():
-            try:
-                data = json.loads(message['data'])
-                status = data.get("status")
-                
-                if self._handle_message(status, data):
-                    self.logger.info(f"\n[LISTEN] mensagem ouvida no redis: {data}")
-                    break
-
-            except (json.JSONDecodeError, TypeError) as e:
-                celery_logger.warning(f"Erro ao processar mensagem do Redis: {e}")
-        return None
-
-    def _handle_message(self, status, data):
-        if status == "done":
-            self._handle_done_status(data)
-            return True
-        elif status == "processing":
-            self._handle_processing_status(data)
-            return False
-        elif status == "partial_result":
-            self._handle_partial_result(data)
-            return False
-        elif status == "failed":
-            self._handle_failed_status(data)
-            return False
-        return None
-
-    def _handle_done_status(self, data):
-        payload = {
-            "status": TaskStatus.DONE.value,
-            "message": "Processamento de múltiplos partnumbers concluído com sucesso.",
-            "result": data.get("result", {}),
-            "partnumbers": self.partnumbers,
-            "room_id": self.room_id,
-            "task_id": self.task_id
-        }
-        self.task_service.mark_as_finished(self.task_id, {"status": payload["status"], "message": payload["message"]})
-        self.logger.info(f"Marked task {self.task_id} as finished.")
-
-        import time
-        try:
-            self.logger.info("[TIRA_TEIMA] Antes do emit final.")
-            self.socket.emit(EventName.BATCH_CLASSIFICATION_FINISHED.value, payload, to=self.room_id)
-            self.logger.info(f"[TIRA_TEIMA] Depois do emit final: {payload}")
-        except Exception as e:
-            self.logger.exception(f"Erro ao emitir evento final: {e}")
-        finally:
-            time.sleep(1)
-        return True
-
-    def _handle_partial_result(self, data:dict):
-        # atualizar status da task
-        self.logger.info(f"\n[RESULTADO PARCIAL] Resultado parcial recebido: {data}\n")
-        self.task_service.update_status(
-            task_id = self.task_id,
-            status = TaskStatus.PROCESSING.value,
-            current = data.get("current"),
-            total = data.get("total"),
-            message = data.get("message")
-        )
-
-        # salvar classificação do partnumber
-        single_classification = data.get("single_classification")
-        if not single_classification:
-            self.logger.error("Erro ao processar resultado parcial. Resultado de single_classification não encontrado.")
-            return None
-
-        single_classification = validate_and_get_model(single_classification, SingleClassification)
-
-        tipi = self.tipi_service.find_from_ncm_ex(single_classification.ncm, single_classification.exception)
-
-        manufacturer = self.manufaturer_service.find_or_create(
-            single_classification.fabricante,
-            single_classification.endereco,
-            single_classification.pais
-        )
-
-        create_classification_dto = {
-            "partnumber": single_classification.partnumber,
-            "classification_task_id": self.task_id,
-            "tipi_id": tipi.id if tipi else None,
-            "manufacturer_id": manufacturer.id if manufacturer else None,
-            "short_description": None,
-            "long_description": single_classification.description,
-            "confidence_rate": single_classification.confidence_score,
-            "user_id": self.user_id
-        }
-        self.classification_service.create(create_classification_dto)
-
-        # emitir evento classification_update_status
-        progress_payload = {
-            "status": TaskStatus.PROCESSING.value,
-            "current": data.get("current"),
-            "total": data.get("total"),
-            "message": data.get("message")
-        }
-        progress_payload = validate_and_get_model(progress_payload, UpdateStatusResponse).model_dump(exclude_none=True)
-
-        self.socket.emit(
-            EventName.CLASSIFICATION_UPDATE_STATUS.value,
-            progress_payload,
-            to=self.room_id
-        )
-        
-        return False
-
-
-    def _handle_processing_status(self, data):
-        progress_payload = data.get('progress', {})
-        self.logger.info(f"\n[PROGRESS] Progresso recebido: {progress_payload}\n")
-        progress_payload['status'] = TaskStatus.PROCESSING.value
-        progress_payload = validate_and_get_model(progress_payload, UpdateStatusResponse).model_dump(exclude_none=True)
-        self.task_service.update_status(
-            task_id = self.task_id,
-            status = TaskStatus.PROCESSING.value,
-            current = progress_payload.get("current"),
-            total=progress_payload.get("total"),
-            message = progress_payload.get("message")
-        )
-        self.socket.emit(
-            EventName.CLASSIFICATION_UPDATE_STATUS.value,
-            progress_payload,
-            to=self.room_id
-        )
-        self.redis_client.publish(
-            'task_progress', 
-            json.dumps(progress_payload)
-        )
-        return False
-
-    def _handle_failed_status(self, data):
-        fail_payload = {
-            "status": TaskStatus.FAILED.value,
-            "message": data.get('error', 'O processamento falhou sem mensagem de erro.')
-        }
-        fail_payload = validate_and_get_model(fail_payload, FailedStatusResponse).model_dump(exclude_none=True)
-        external_socketio.emit(
-            EventName.CLASSIFICATION_UPDATE_STATUS.value,
-            fail_payload,
-            to=self.room_id
-        )
-        return False
