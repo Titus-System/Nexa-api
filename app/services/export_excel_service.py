@@ -32,12 +32,12 @@ class ExportExcelService:
             exception = c.tipi.ex if c.tipi.ex != "00" else None
             d = {
                 "Seq": seq,
-                "DESCRIÇÃO ERP": c.long_description[:30],
+                "DESCRIÇÃO ERP": c.short_description,
                 "DESCRIÇÃO PARA DECLARAÇÃO DE IMPORTAÇÃO": c.long_description,
                 "NCM (CLASSIFICAÇÃO FISCAL)": f"{c.tipi.ncm.code} ({exception})" if exception else c.tipi.ncm.code,
                 "FABRICANTE": c.manufacturer.name,
-                "Endereço": c.manufacturer.address,
-                "Descr. País": c.manufacturer.country
+                "Endereço": c.address,
+                "Descr. País": c.country
             }
             treated_data.append(d)
             seq += 1
