@@ -22,7 +22,7 @@ class ClassificationService:
             short_description = attributes.get("short_description"),
             long_description = attributes.get("long_description"),
             confidence_rate = attributes.get("confidence_rate"),
-            country_code = attributes.get("country_code")
+            country = attributes.get("country")
         ))
         self.db_session.commit()
 

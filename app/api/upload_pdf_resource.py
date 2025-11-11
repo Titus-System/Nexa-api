@@ -30,12 +30,14 @@ class UploadPedidoResource(Resource):
 
         if not file.filename.lower().endswith(".pdf"):
             return {"message": "Formato inválido, apenas PDFs são aceitos."}, 400
+        
+        supplier = request.form.get("supplier")
 
         try:
             pdf_bytes = file.read()
             pdf_file = pdfplumber.open(io.BytesIO(pdf_bytes))
 
-            extractor = PdfParserFactory(pdf_file)
+            extractor = PdfParserFactory(pdf_file, supplier)
             part_numbers = extractor.extract_partnumbers()
 
             room_id = str(uuid.uuid4())

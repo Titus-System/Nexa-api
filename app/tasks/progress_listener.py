@@ -113,10 +113,16 @@ class ProgressListener:
             )
             manufacturer_id = manufacturer.id
 
+        address =  pre_classification.address
+
+        if address is None and single_classification.endereco is not None:
+            address = single_classification.endereco
+
         update_attr = {
             "tipi_id": tipi.id if tipi else None,
             "manufacturer_id": manufacturer_id if manufacturer_id else None,
             "long_description": single_classification.description,
+            "address": address,
             "confidence_rate": single_classification.confidence_score,
         }
 

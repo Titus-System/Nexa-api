@@ -81,7 +81,7 @@ class BatchClassificationTaskManager:
                 mnf = self.manufaturer_service.find_or_create(info.manufacturer)
             if info.ncm:
                 ncm = self.ncm_service.create(info.ncm)
-                tipi = self.tipi_service.create({"ncm_code":ncm.code})
+                tipi = self.tipi_service.create(ncm_code=ncm.code)
 
             self.classification_service.create({
                 "partnumber": info.partnumber,
@@ -91,7 +91,8 @@ class BatchClassificationTaskManager:
                 "confidence_rate": 0.98,
                 "user_id": self.user_id,
                 "tipi_id": tipi.id if tipi else None,
-                "country_code": info.coo
+                "country": info.country,
+                "address": info.address
             })
 
 

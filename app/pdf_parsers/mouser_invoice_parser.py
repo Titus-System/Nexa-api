@@ -10,7 +10,7 @@ class MouserInvoiceParser(PdfParser):
     def __init__(self, pdf_file: PDF):
         self.pdf_file = pdf_file
         self.regex = re.compile(
-            r'/\s*(?P<pn>\S+)\s+(?P<manufacturer>\S+)\s+(?P<desc_erp>[^/]+?)/.*?(?:NCM:(?P<ncm>\d+)|HTS:(?P<hts>\d+)).*?COO:(?P<coo>\S+)'
+            r'/\s*(?P<pn>\S+)\s+(?P<manufacturer>\S+)\s+(?P<desc_erp>[^/]+?)/.*?(?:NCM:(?P<ncm>\d+)).*?COO:(?P<coo>\S+)'
         )
                 
         self.headers = [
