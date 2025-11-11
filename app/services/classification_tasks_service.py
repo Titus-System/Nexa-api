@@ -83,3 +83,11 @@ class ClassificationTaskService:
             stmt = stmt.where(and_(*conditions))
         result = self.db_session.execute(stmt).scalars().all()
         return result
+
+    def delete(self, task_id:str):
+        task = ClassificationTask.query.get(task_id)
+        if not task:
+            return None
+        self.db_session.delete(task)
+        self.db_session.commit()
+        return task

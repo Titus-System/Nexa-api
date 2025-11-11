@@ -165,7 +165,7 @@ class Classification(db.Model, TimeStampMixin):
 
     id = Column(Integer, primary_key=True)
     partnumber_id = Column(Integer, ForeignKey("partnumbers.id", ondelete='CASCADE'), nullable=False)
-    classification_task_id = Column(String(256), ForeignKey("classification_tasks.id", ondelete='SET NULL'))
+    classification_task_id = Column(String(256), ForeignKey("classification_tasks.id", ondelete='CASCADE'), nullable=True)
     tipi_id = Column(Integer, ForeignKey("tipi.id", ondelete='SET NULL'))
     manufacturer_id = Column(Integer, ForeignKey("manufacturers.id", ondelete='SET NULL'))
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete='SET NULL'), nullable=False, index=True)

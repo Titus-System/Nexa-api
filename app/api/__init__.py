@@ -17,7 +17,7 @@ def initialize_api(app: Flask) -> Api:
     api.add_resource(HealthCheck, "/")
     api.add_resource(CheckWebSocketConnection, "/ws")
     api.add_resource(SingleClassificationResource, "/classify-partnumber")
-    api.add_resource(TaskResource, "/tasks")
+    api.add_resource(TaskResource, "/tasks", "/tasks/<string:task_id>")
     api.add_resource(PartnumberResource, "/partnumbers", "/partnumbers/<string:partnumber>")
     api.add_resource(NcmResource, "/ncm", "/ncm/<string:ncm_code>")
     api.add_resource(UploadPedidoResource, "/upload-pdf")

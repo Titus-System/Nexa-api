@@ -28,4 +28,11 @@ class TaskResource(Resource):
         tasks = [ClassificationTaskSchema.model_validate(task).to_dict() for task in tasks]
         return tasks
     
+    def delete(self, task_id:str):
+        task = self.service.delete(task_id)
+        if not task:
+            return {"error": "Task not found"}, 404
+        return {"message": "Task deleted successfully"}, 204
+
+    
         

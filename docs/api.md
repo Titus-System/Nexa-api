@@ -1,9 +1,11 @@
 ## API Nexa – Comunicação Frontend ↔️ Nexa-api
+
 ---
 
 ## 1. Visão Geral
 
 Esta API permite que clientes solicitem a classificação de partnumbers de forma assíncrona, utilizando:
+
 - **HTTP REST** para iniciar a tarefa
 - **WebSocket (Socket.IO)** para receber progresso e resultado final
 
@@ -30,6 +32,7 @@ Esta API permite que clientes solicitem a classificação de partnumbers de form
 ```
 
 Campos:
+
 - `partnumber` (**obrigatório**): string
 - `description`, `manufacturer`, `supplier`: string (opcionais)
 - `reclassify`: boolean (opcional, false por padrão)
@@ -61,11 +64,13 @@ Campos:
 ```
 
 ### 2.2. Iniciar classificação de Lista de Partnumbers
+
 - **Endpoint:** `/classify-batch`
 - **Método:** `POST`
 - **Content-Type:** `application/json`
 
 #### Corpo da requisição
+
 ```json
 {
   "partnumbers": ["PN-TEST-12345",],
@@ -73,12 +78,15 @@ Campos:
   "reclassify": false
 }
 ```
+
 Campos:
+
 - `partnumbers` (**obrigatório**): list[string]
 - `user_id`: string (opcional)
 - `reclassify`: boolean (opcional, false por padrão)
 
 #### Resposta de Sucesso (`202 Accepted`)
+
 ```json
 {
   "message": "Seu pedido de classificação em lote foi recebido e está sendo processado.",
@@ -91,8 +99,8 @@ Campos:
   }
 }
 ```
-- Sendo que o campo `classifications` lista as classificações já existentes para cada partnumber da requisição.
 
+- Sendo que o campo `classifications` lista as classificações já existentes para cada partnumber da requisição.
 
 ### 2.2. Buscar Task
 
@@ -100,6 +108,7 @@ Campos:
 - **Método:** `GET`
 
 #### Query String Parameters
+
 | Parâmetro          | Tipo   | Obrigatório | Descrição                                            |
 | ------------------ | ------ | ----------- | ---------------------------------------------------- |
 | `task_id`          | string | Não         | ID da tarefa específica.                             |
@@ -109,7 +118,6 @@ Campos:
 | `user_id`          | string | Não         | ID do usuário responsável pela tarefa.               |
 
 > Todos os parâmetros são opcionais, mas você pode combinar múltiplos filtros em uma única requisição.
-
 
 #### **Exemplos de Requisição**
 
@@ -135,8 +143,8 @@ GET /tasks?job_id=456&progress_channel=room_abc
 
 #### **Resposta**
 
-* **Status:** 200 OK
-* **Formato:** JSON
+- **Status:** 200 OK
+- **Formato:** JSON
 
 ```json
 {
@@ -165,15 +173,32 @@ GET /tasks?job_id=456&progress_channel=room_abc
 
 ---
 
+### 2.2. Deletar Task
+
+- **Endpoint:** `/tasks/<task_id>`
+- **Método:** `DELETE`
+
+#### **Exemplo de requisição**
+
+```
+DELETE /tasks/a3ed4ce2-8ad2-459f-96cb-247830bac4f3
+```
+
+#### **Resposta**
+
+- **Status:** 204
+
+---
 
 ### 2.3. Listar Partnumbers com classificações
+
 - **Endpoint:** `/partnumbers`
 - **Método:** `GET`
 
 #### **Resposta**
 
-* **Status:** 200 OK
-* **Formato:** JSON
+- **Status:** 200 OK
+- **Formato:** JSON
 
 ```json
 [
@@ -214,6 +239,7 @@ GET /tasks?job_id=456&progress_channel=room_abc
 ```
 
 #### 2.4. Buscar Partnumber
+
 - **Endpoint:** `/partnumbers/<partnumber_code>`
 - **Método:** `GET`
 
@@ -222,6 +248,7 @@ GET /partnumbers/PNTEST12345
 ```
 
 #### **Resposta**
+
 ```json
 {
   "created_at": "2025-10-15T22:43:33.082578Z",
@@ -249,13 +276,13 @@ GET /partnumbers/PNTEST12345
 }
 ```
 
-
 ## 3. WebSocket (Socket.IO)
 
 ### 3.1. Conexão
 
 - **URL:** `ws://localhost:5000`
 - Após conectar, o servidor emite:
+
   ```json
   { "socket_session_id": "<id-da-sessao>" }
   ```
@@ -318,6 +345,7 @@ GET /partnumbers/PNTEST12345
 ```
 
 **Status possíveis:**
+
 - `processing`: tarefa em andamento
 - `done`: tarefa concluída com sucesso
 - `failed`: erro durante o processamento
@@ -341,7 +369,6 @@ GET /partnumbers/PNTEST12345
 - O campo `room_id` é obrigatório para receber updates.
 - O payload dos eventos segue os modelos Pydantic em `app/schemas/classification_schemas.py`.
 - Para exemplos de uso, veja os testes em `tests/test_classification_task.py`.
-
 
 ### 6\. Exemplo de Implementação Completa (Pseudocódigo / TypeScript)
 
