@@ -26,10 +26,16 @@ def create_app(container: Container | None = None, celery_worker = False) -> Fla
 
     api = initialize_api(app)
 
-    from app.extensions import init_celery, socketio, db
+    from app.extensions import init_celery, socketio, db, jwt, bcrypt
     socketio.init_app(app, message_queue=settings.REDIS_URL)
     celery = init_celery(app)
     app.celery = celery
+    
+    # Initialize JWT and Bcrypt
+    app.config["JWT_SECRET_KEY"] = settings.JWT_SECRET_KEY
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = settings.JWT_ACCESS_TOKEN_EXPIRES
+    jwt.init_app(app)
+    bcrypt.init_app(app)
         
     db.init_app(app)
     with app.app_context():

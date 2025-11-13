@@ -1,6 +1,6 @@
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_
 from app.extensions import db
-from app.models.models import Classification, Partnumber
+from app.models.models import Classification, Partnumber, ClassificationTask
 from app.schemas.classification_schemas import SingleClassification
 
 class ClassificationService:
@@ -40,6 +40,34 @@ class ClassificationService:
             )
         )
         return self.db_session.execute(stmt).scalar_one()
+
+    def get_classifications(self, filters: dict):
+        """Get classifications filtered by various criteria, including user_id."""
+        stmt = select(Classification)
+        conditions = []
+        needs_join = False
+        
+        if "classification_id" in filters:
+            conditions.append(Classification.id == filters["classification_id"])
+        if "user_id" in filters:
+            conditions.append(Classification.created_by_user_id == filters["user_id"])
+        if "job_id" in filters or "progress_channel" in filters or "status" in filters:
+            needs_join = True
+        
+        if needs_join:
+            stmt = stmt.join(ClassificationTask, Classification.classification_task_id == ClassificationTask.id)
+            if "job_id" in filters:
+                conditions.append(ClassificationTask.job_id == filters["job_id"])
+            if "progress_channel" in filters:
+                conditions.append(ClassificationTask.progress_channel == filters["progress_channel"])
+            if "status" in filters:
+                conditions.append(ClassificationTask.status == filters["status"])
+        
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+        
+        result = self.db_session.execute(stmt).scalars().all()
+        return result
 
     def update(self, id:int, update_attr:dict):
         stmt = update(Classification).where(Classification.id == id).values(**update_attr)

@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     )
 
     NEXA_AI_SERVER: str = "http://127.0.0.1:5001"
+    JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
+    JWT_ACCESS_TOKEN_EXPIRES: int = 86400  # 24 hours in seconds
 
 
 settings = Settings()

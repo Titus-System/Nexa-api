@@ -8,14 +8,22 @@ from app.api.ncm_resource import NcmResource
 from app.api.partnumber_resource import PartnumberResource
 from app.api.task_resources import TaskResource
 from app.api.upload_pdf_resource import UploadPedidoResource
+from app.api.auth_routes import RegisterResource, LoginResource
 
     
 
 def initialize_api(app: Flask) -> Api:
     api = Api(app)
     
+    # Authentication routes (no JWT required)
+    api.add_resource(RegisterResource, "/register")
+    api.add_resource(LoginResource, "/login")
+    
+    # Health check (no JWT required)
     api.add_resource(HealthCheck, "/")
     api.add_resource(CheckWebSocketConnection, "/ws")
+    
+    # Protected routes (JWT required)
     api.add_resource(SingleClassificationResource, "/classify-partnumber")
     api.add_resource(TaskResource, "/tasks", "/tasks/<string:task_id>")
     api.add_resource(PartnumberResource, "/partnumbers", "/partnumbers/<string:partnumber>")

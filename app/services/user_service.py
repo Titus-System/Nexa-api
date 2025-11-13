@@ -1,4 +1,4 @@
-from app.extensions import db
+from app.extensions import db, bcrypt
 from app.models.models import Role, User
 
 
@@ -21,12 +21,15 @@ class UserService:
         if not role:
             raise ValueError("Role does not exist")
 
-        # password_hash = generate_password_hash(password)
-        password_hash = password  # Placeholder, replace with actual hashing
-        new_user = User(name=name, email=email, password_hash=password_hash, role=role, admin_id=admin_id)
+        password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+        new_user = User(name=name, email=email, password_hash=password_hash, role_id=role.id, admin_id=admin_id)
         db.session.add(new_user)
         db.session.commit()
         return new_user
+    
+    def verify_password(self, user: User, password: str) -> bool:
+        """Verify a password against the user's hashed password."""
+        return bcrypt.check_password_hash(user.password_hash, password)
 
     def update_user(self, user_id: int, **kwargs):
         user = self.get_by_id(user_id)

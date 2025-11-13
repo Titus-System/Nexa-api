@@ -6,11 +6,8 @@ from app.schemas.classification_schemas import StartBatchClassificationSchema
 from app.services.classification_service import PartnumberClassificationService
 from app.services.pdfExtrator import PdfParserFactory
 from app.core.logger_config import logger
-
-from flask import request
-from flask_restful import Resource
+from app.api.auth_helpers import get_current_user_id, jwt_required_optional
 import uuid
-
 
 
 class UploadPedidoResource(Resource):
@@ -18,7 +15,7 @@ class UploadPedidoResource(Resource):
         self.service = PartnumberClassificationService()
         self.logger = logger
 
-
+    @jwt_required_optional
     def post(self):
         if "pedido" not in request.files:
             return {"message": "Nenhum arquivo enviado."}, 400
@@ -32,6 +29,7 @@ class UploadPedidoResource(Resource):
             return {"message": "Formato inválido, apenas PDFs são aceitos."}, 400
         
         supplier = request.form.get("supplier")
+        current_user_id = get_current_user_id()
 
         try:
             pdf_bytes = file.read()
@@ -46,7 +44,7 @@ class UploadPedidoResource(Resource):
                 partnumbers=part_numbers,
                 room_id=room_id,
                 reclassify=request.form.get("reclassify", "false").lower() == "true",
-                user_id=int(request.form.get("user_id", 1))
+                user_id=current_user_id
             )
 
             response = self.service.start_batch_classification(schema)
