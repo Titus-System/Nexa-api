@@ -23,5 +23,25 @@ class NcmResource(Resource):
 
     def get_one(self, ncm_code:str):
         ncm = self.service.get_by_code(ncm_code)
-        ncm = NcmSchema.model_validate(ncm).to_dict()
-        return ncm
+        if ncm is None:
+            self.logger.info(f"NCM not found: {ncm_code}")
+            return {"message": "NCM not found"}, 404
+
+        # build a minimal response with description and tipi rules
+        tipi_rules = []
+        for t in getattr(ncm, "tipi_rules", []) or []:
+            tipi_rules.append({
+                "id": t.id,
+                "ex": t.ex,
+                "description": t.description,
+                "tax": float(t.tax) if t.tax is not None else None,
+            })
+
+        response = {
+            "id": ncm.id,
+            "code": ncm.code,
+            "description": ncm.description,
+            "tipi_rules": tipi_rules,
+        }
+
+        return response
